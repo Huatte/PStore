@@ -6,7 +6,7 @@ import {
   json,
 } from '../_lib/github.js';
 
-const MAX_BYTES = 8 * 1024 * 1024; // 8MB limit
+const MAX_BYTES = 40 * 1024 * 1024; // 40MB limit
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -39,7 +39,7 @@ async function handle(context) {
   }
 
   if (file.size > MAX_BYTES) {
-    return json({ error: 'file too large (max 8MB)' }, 413);
+    return json({ error: 'file too large (max 40MB)' }, 413);
   }
 
   const arrayBuffer = await file.arrayBuffer();

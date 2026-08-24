@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>图片 · PStore</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="/">PStore</a>
+      <a class="admin-link" href="/admin.html">管理</a>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="back"><a href="/">&larr; 返回图库</a></div>
+    <section class="detail">
+      <div class="detail-img"><img id="big-img" alt="img" /></div>
+      <div class="detail-meta" id="meta"></div>
+
+      <div class="comments">
+        <h3>留言</h3>
+        <div id="comment-list" class="comment-list"></div>
+        <form id="comment-form" class="comment-form">
+          <input id="c-author" placeholder="昵称" maxlength="40" required />
+          <textarea id="c-text" placeholder="留下你的评论…" maxlength="500" required></textarea>
+          <button type="submit">提交</button>
+          <div class="hint">留言需经管理员审核后显示</div>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer"><div class="wrap">PStore · 图片床</div></footer>
+  <script src="/js/image.js"></script>
+</body>
+</html>

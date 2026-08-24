@@ -1,9 +1,10 @@
-const gh = (env) => {
+export const gh = (env) => {
   const REPO = env.GH_REPO;
   const BRANCH = env.GH_BRANCH || 'main';
   const headers = {
     Authorization: `Bearer ${env.GITHUB_TOKEN}`,
     Accept: 'application/vnd.github+json',
+    'User-Agent': 'PStore-pages',
   };
 
   async function getContents(path) {

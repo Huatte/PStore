@@ -11,6 +11,17 @@ const MAX_BYTES = 8 * 1024 * 1024; // 8MB limit
 export async function onRequestPost(context) {
   const { request, env } = context;
 
+  try {
+    return await handle(context);
+  } catch (e) {
+    console.error('UPLOAD ERROR', e, String(e && e.stack || ''));
+    return json({ error: String(e && e.message || e), stack: String(e && e.stack || '') }, 500);
+  }
+}
+
+async function handle(context) {
+  const { request, env } = context;
+
   if (!env.ADMIN_TOKEN || request.headers.get('x-admin-token') !== env.ADMIN_TOKEN) {
     return json({ error: 'unauthorized' }, 401);
   }

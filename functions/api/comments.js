@@ -1,4 +1,4 @@
-import { gh, readJson, writeJson, json } from '../_lib/github.js';
+import { gh, readJson, writeJson, json, withLock } from '../_lib/github.js';
 
 function pad(n) { return String(n).padStart(2, '0'); }
 
@@ -49,24 +49,26 @@ export async function onRequestPost(context) {
   if (!author) return json({ error: 'name required' }, 400);
   if (!text) return json({ error: 'message required' }, 400);
 
-  const comments = await readJson(env, 'data/comments.json', {});
-  const list = comments[image] || [];
-  const createdAt = Date.now();
-  list.push({
-    id: makeCommentId(new Date(createdAt)),
-    author,
-    text,
-    status: 'visible', // comments show immediately by default
-    createdAt,
+  await withLock('comments', async () => {
+    const comments = await readJson(env, 'data/comments.json', {});
+    const list = comments[image] || [];
+    const createdAt = Date.now();
+    list.push({
+      id: makeCommentId(new Date(createdAt)),
+      author,
+      text,
+      status: 'visible', // comments show immediately by default
+      createdAt,
+    });
+    comments[image] = list;
+
+    let sha = null;
+    try {
+      const meta = await gh(env).getContents('data/comments.json');
+      if (meta && meta.sha) sha = meta.sha;
+    } catch (_) {}
+
+    await writeJson(env, 'data/comments.json', comments, `new comment ${createdAt}`, sha);
   });
-  comments[image] = list;
-
-  let sha = null;
-  try {
-    const meta = await gh(env).getContents('data/comments.json');
-    if (meta && meta.sha) sha = meta.sha;
-  } catch (_) {}
-
-  await writeJson(env, 'data/comments.json', comments, `new comment ${createdAt}`, sha);
   return json({ ok: true, message: 'posted' });
 }

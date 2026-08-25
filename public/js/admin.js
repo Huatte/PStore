@@ -601,6 +601,159 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // --- groups (合集管理) ---
+  const groupListEl = document.getElementById('group-list');
+  const groupCreateBtn = document.getElementById('group-create-btn');
+
+  async function loadGroups() {
+    const t = token();
+    try {
+      const res = await fetch('/api/admin/groups', { headers: { 'x-admin-token': t } });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      renderGroups(data.groups || []);
+    } catch (e) { groupListEl.innerHTML = '<div class="empty-list">加载失败</div>'; }
+  }
+
+  function renderGroups(groups) {
+    if (groups.length === 0) {
+      groupListEl.innerHTML = '<div class="empty-list">暂无合集，点击“新建合集”创建</div>';
+      return;
+    }
+    groupListEl.innerHTML = '';
+    groups.forEach((g) => {
+      const div = document.createElement('div');
+      div.className = 'group-card';
+      div.innerHTML = `
+        <div class="group-head">
+          <span class="group-name">${escapeHtml(g.name)}</span>
+          <span class="group-count">${g.count} 张图片</span>
+          <span class="group-actions">
+            <button class="btn-rename-group" data-id="${escapeHtml(g.id)}">重命名</button>
+            <button class="btn-add-group-img" data-id="${escapeHtml(g.id)}">添加图片</button>
+            <button class="btn-del-group" data-id="${escapeHtml(g.id)}">删除合集</button>
+          </span>
+        </div>
+        <div class="group-members" id="gm-${escapeHtml(g.id)}"><span class="empty-list">加载成员中…</span></div>`;
+      groupListEl.appendChild(div);
+      loadGroupMembers(g.id, div.querySelector('.group-members'));
+    });
+  }
+
+  async function loadGroupMembers(id, container) {
+    try {
+      const res = await fetch(`/api/images?group=${encodeURIComponent(id)}`);
+      const data = await res.json();
+      const members = data.images || [];
+      if (members.length === 0) {
+        container.innerHTML = '<div class="empty-list">该合集暂无图片</div>';
+        return;
+      }
+      container.innerHTML = '';
+      members.forEach((img) => {
+        const item = document.createElement('div');
+        item.className = 'group-member';
+        item.innerHTML = `
+          <img class="gm-thumb" src="/img/${encodeURIComponent(img.key)}" alt="" onerror="this.style.visibility='hidden'" />
+          <span class="gm-name">${escapeHtml(img.name || img.key)}</span>
+          <button class="btn-remove-group-img" data-id="${escapeHtml(id)}" data-key="${escapeHtml(img.key)}">移除</button>`;
+        container.appendChild(item);
+      });
+    } catch (e) {
+      container.innerHTML = '<div class="empty-list">加载失败</div>';
+    }
+  }
+
+  groupCreateBtn.addEventListener('click', async () => {
+    const name = prompt('输入新合集名称：');
+    if (name === null) return;
+    const trimmed = name.trim();
+    if (!trimmed) { alert('名称不能为空'); return; }
+    try {
+      const res = await fetch('/api/admin/group', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-token': token() },
+        body: JSON.stringify({ action: 'create', name: trimmed }),
+      });
+      if (res.ok) { await loadGroups(); }
+      else alert('创建失败');
+    } catch (e) { alert('网络错误'); }
+  });
+
+  groupListEl.addEventListener('click', async (e) => {
+    const renameBtn = e.target.closest('.btn-rename-group');
+    if (renameBtn) {
+      const id = renameBtn.dataset.id;
+      const name = prompt('输入新名称：');
+      if (name === null) return;
+      const trimmed = name.trim();
+      if (!trimmed) { alert('名称不能为空'); return; }
+      try {
+        const res = await fetch('/api/admin/group', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-admin-token': token() },
+          body: JSON.stringify({ action: 'rename', id, name: trimmed }),
+        });
+        if (res.ok) await loadGroups();
+        else alert('重命名失败');
+      } catch (err) { alert('网络错误'); }
+      return;
+    }
+
+    const delBtn = e.target.closest('.btn-del-group');
+    if (delBtn) {
+      const id = delBtn.dataset.id;
+      if (!confirm('确定删除该合集吗？合集下的图片不会被删除，但会取消合集分组。')) return;
+      try {
+        const res = await fetch('/api/admin/group', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-admin-token': token() },
+          body: JSON.stringify({ action: 'delete', id }),
+        });
+        if (res.ok) { await loadGroups(); await loadManage(); }
+        else alert('删除失败');
+      } catch (err) { alert('网络错误'); }
+      return;
+    }
+
+    const addBtn = e.target.closest('.btn-add-group-img');
+    if (addBtn) {
+      const id = addBtn.dataset.id;
+      // prompt for image keys (comma/space separated) or use manage selection
+      const input = prompt('输入要加入合集的图片 key（用逗号或空格分隔）：\n提示：可在“管理图片”中查看 key。');
+      if (input === null) return;
+      const keys = input.split(/[,，\s]+/).map((k) => k.trim()).filter(Boolean);
+      if (keys.length === 0) { alert('未输入有效 key'); return; }
+      try {
+        const res = await fetch('/api/admin/group', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-admin-token': token() },
+          body: JSON.stringify({ action: 'add', id, keys }),
+        });
+        if (res.ok) { await loadGroups(); await loadManage(); }
+        else alert('添加失败');
+      } catch (err) { alert('网络错误'); }
+      return;
+    }
+
+    const removeBtn = e.target.closest('.btn-remove-group-img');
+    if (removeBtn) {
+      const id = removeBtn.dataset.id;
+      const key = removeBtn.dataset.key;
+      if (!confirm('确定将该图片移出合集吗？')) return;
+      try {
+        const res = await fetch('/api/admin/group', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-admin-token': token() },
+          body: JSON.stringify({ action: 'remove', id, keys: [key] }),
+        });
+        if (res.ok) { await loadGroups(); await loadManage(); }
+        else alert('移除失败');
+      } catch (err) { alert('网络错误'); }
+      return;
+    }
+  });
+
   // gallery cache bust
   function reloadGalleryCache() {
     if ('caches' in window) {
@@ -610,7 +763,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- init ---
   if (token()) showPanel();
-  if (token()) { loadModerate(); loadImageReview(); loadManage(); }
+  if (token()) { loadModerate(); loadImageReview(); loadManage(); loadGroups(); }
 });
 
 function formatBytes(bytes) {

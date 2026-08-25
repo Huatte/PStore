@@ -37,6 +37,7 @@ async function handle(context) {
   if (!file || typeof file === 'string') {
     return json({ error: 'no file' }, 400);
   }
+  const group = String(form.get('group') || '').trim().slice(0, 40) || undefined;
 
   if (file.size > MAX_BYTES) {
     return json({ error: 'file too large (max 40MB)' }, 413);
@@ -81,6 +82,7 @@ async function handle(context) {
     uploader: 'admin',
     addedAt: ts,
   };
+  if (group) record.group = group;
   const idx = images.findIndex((i) => i.key === key);
   if (idx >= 0) images[idx] = { ...images[idx], addedAt: ts };
   else images.push(record);

@@ -33,21 +33,23 @@ export async function onRequestPost(context) {
 
   const pendingPath = `pending_images/${key}`;
   const pendingMeta = await g.getContents(pendingPath).catch(() => null);
-  if (!pendingMeta) return json({ error: 'pending file missing' }, 404);
 
   if (action === 'approve') {
-    // Move file: pending_images/<key> -> images/<key>
-    const b64 = await rawFileBase64(env, pendingPath);
-    if (!b64) return json({ error: 'failed to read pending file' }, 500);
+    if (pendingMeta) {
+      // Move file: pending_images/<key> -> images/<key>
+      const b64 = await rawFileBase64(env, pendingPath);
+      if (!b64) return json({ error: 'failed to read pending file' }, 500);
 
-    const destPath = `images/${key}`;
-    const destExists = await g.getContents(destPath).catch(() => null);
-    if (!destExists) {
-      await g.putFile(destPath, b64, `approve image ${key}`);
+      const destPath = `images/${key}`;
+      const destExists = await g.getContents(destPath).catch(() => null);
+      if (!destExists) {
+        await g.putFile(destPath, b64, `approve image ${key}`);
+      }
+      await g.deleteFile(pendingPath, `remove pending ${key}`, pendingMeta.sha);
     }
-    await g.deleteFile(pendingPath, `remove pending ${key}`, pendingMeta.sha);
+    // else: pending file already gone (moved previously) -> just fix the index below
 
-    // Add to images.json index
+    // Add to images.json index (idempotent)
     const images = await readJson(env, 'data/images.json', []);
     const record = {
       key,
@@ -69,11 +71,13 @@ export async function onRequestPost(context) {
     } catch (_) {}
     await writeJson(env, 'data/images.json', images, `approve index add (${key})`, isha);
   } else {
-    // reject: just remove the pending file
-    await g.deleteFile(pendingPath, `reject image ${key}`, pendingMeta.sha);
+    // reject: remove the pending file if it still exists
+    if (pendingMeta) {
+      await g.deleteFile(pendingPath, `reject image ${key}`, pendingMeta.sha);
+    }
   }
 
-  // Remove from pending_images.json
+  // Always remove from pending_images.json (fixes stale/ghost records too)
   const remaining = (pendings || []).filter((p) => p.key !== key);
   let psha = null;
   try {

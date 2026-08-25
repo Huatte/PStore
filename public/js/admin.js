@@ -126,30 +126,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- upload ---
   let uploading = false;
-  uploadBtn.addEventListener('click', async () => {
-    if (uploading) return; // block re-entry while an upload is in progress
-    const files = Array.from(fileInput.files || []);
-    if (files.length === 0) { uploadProgress.textContent = '请选择图片'; uploadProgress.className = 'msg err'; return; }
+  let adminFailed = []; // { file, extra }
+  const t = token();
 
-    const mode = document.querySelector('input[name="admin-upload-mode"]:checked').value;
-    const group = mode === 'merge' ? `g${Date.now()}${Math.random().toString(36).slice(2, 8)}` : '';
+  function updateAdminRetryBtn() {
+    const btn = document.getElementById('admin-retry-failed');
+    if (!btn) return;
+    btn.style.display = adminFailed.length ? 'inline-block' : 'none';
+    btn.textContent = `重试失败的上传 (${adminFailed.length})`;
+  }
 
-    uploading = true;
-    uploadBtn.disabled = true;
-    const originalText = uploadBtn.textContent;
-    uploadBtn.textContent = '上传中…';
-    uploadResults.innerHTML = '';
-    const t = token();
+  async function runAdminUploads(uploads) {
     let ok = 0, fail = 0;
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
+    const newlyFailed = [];
+    for (let i = 0; i < uploads.length; i++) {
+      const { file, extra } = uploads[i];
       const ui = createUploadItem(file);
-      const extra = {};
-      if (group) extra.group = group;
-      uploadProgress.textContent = `正在上传 ${i + 1}/${files.length}`;
+      uploadProgress.textContent = `正在上传 ${i + 1}/${uploads.length}`;
       uploadProgress.className = 'msg';
       try {
-        const data = await uploadFileXhr(file, '/api/upload', { 'x-admin-token': t }, extra, ui);
+        await uploadFileXhr(file, '/api/upload', { 'x-admin-token': t }, extra, ui);
         ui.fill.style.width = '100%';
         ui.pctEl.textContent = '100%';
         ui.speedEl.textContent = '完成';
@@ -161,17 +157,53 @@ document.addEventListener('DOMContentLoaded', () => {
         ui.status.textContent = '失败';
         ui.status.classList.add('st-err');
         ui.speedEl.textContent = err || '失败';
+        newlyFailed.push({ file, extra });
       }
     }
-    // clear file input only after all uploads finish
+    adminFailed = newlyFailed;
+    updateAdminRetryBtn();
+    uploadProgress.textContent = `上传完成：成功 ${ok} 张${fail ? `，失败 ${fail} 张` : ''}`;
+    uploadProgress.className = fail > 0 ? 'msg err' : 'msg ok';
+    await loadManage();
+    reloadGalleryCache();
+  }
+
+  const adminRetryBtn = document.getElementById('admin-retry-failed');
+  if (adminRetryBtn) {
+    adminRetryBtn.addEventListener('click', () => {
+      if (uploading || adminFailed.length === 0) return;
+      const retries = adminFailed;
+      uploadResults.innerHTML = '';
+      runAdminUploads(retries);
+    });
+  }
+
+  uploadBtn.addEventListener('click', async () => {
+    if (uploading) return; // block re-entry while an upload is in progress
+    const files = Array.from(fileInput.files || []);
+    if (files.length === 0) { uploadProgress.textContent = '请选择图片'; uploadProgress.className = 'msg err'; return; }
+
+    const mode = document.querySelector('input[name="admin-upload-mode"]:checked').value;
+    const group = mode === 'merge' ? `g${Date.now()}${Math.random().toString(36).slice(2, 8)}` : '';
+
+    const uploads = files.map((file) => {
+      const extra = {};
+      if (group) extra.group = group;
+      return { file, extra };
+    });
+
+    uploading = true;
+    uploadBtn.disabled = true;
+    const originalText = uploadBtn.textContent;
+    uploadBtn.textContent = '上传中…';
+    uploadResults.innerHTML = '';
+
+    await runAdminUploads(uploads);
+
     fileInput.value = '';
     uploadBtn.disabled = false;
     uploadBtn.textContent = originalText;
-    uploadProgress.textContent = `上传完成：成功 ${ok} 张${fail ? `，失败 ${fail} 张` : ''}`;
-    uploadProgress.className = fail > 0 ? 'msg err' : 'msg ok';
     uploading = false;
-    await loadManage();
-    reloadGalleryCache();
   });
 
   // --- moderate (comment management) ---

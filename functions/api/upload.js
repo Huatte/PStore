@@ -3,6 +3,7 @@ import {
   readJson,
   writeJson,
   bytesToBase64,
+  generateAndStoreThumb,
   json,
 } from '../_lib/github.js';
 
@@ -69,6 +70,9 @@ async function handle(context) {
     return json({ error: 'image upload failed; not indexed' }, 500);
   }
 
+  // Generate a clear thumbnail asynchronously (best effort, don't block upload)
+  const thumbPromise = generateAndStoreThumb(env, key, imagePath).catch(() => null);
+
   // Update images.json metadata
   const images = await readJson(env, 'data/images.json', []);
   const ts = Date.now();
@@ -92,6 +96,8 @@ async function handle(context) {
     if (meta && meta.sha) sha = meta.sha;
   } catch (_) {}
   await writeJson(env, 'data/images.json', images, `update images index (${key})`, sha);
+
+  await thumbPromise;
 
   return json({ ok: true, ...record });
 }

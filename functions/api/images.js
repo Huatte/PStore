@@ -36,6 +36,13 @@ export async function onRequestGet(context) {
   // dedup=0: return every image individually (admin manage page needs all).
   const dedup = (url.searchParams.get('dedup') || '1') !== '0';
 
+  // Load group names once so homepage can show the group's real name.
+  const groups = await readJson(env, 'data/groups.json', []);
+  const groupNameMap = new Map();
+  for (const gr of (Array.isArray(groups) ? groups : [])) {
+    if (gr && gr.id) groupNameMap.set(gr.id, gr.name || gr.id);
+  }
+
   let working = images;
   if (dedup) {
     const byGroup = new Map();
@@ -48,13 +55,22 @@ export async function onRequestGet(context) {
         standalone.push(img);
       }
     }
-    working = [...byGroup.values(), ...standalone];
+    // For each group representative, override name with the group name (if known)
+    const groupCards = [];
+    for (const img of byGroup.values()) {
+      const groupName = groupNameMap.get(img.group);
+      groupCards.push({ ...img, name: groupName || img.name, groupName: groupName || '' });
+    }
+    working = [...groupCards, ...standalone];
   }
 
   working.sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
 
   if (q) {
-    const filtered = working.filter((img) => (img.name || '').toLowerCase().includes(q));
+    const filtered = working.filter((img) => {
+      const haystack = `${img.name || ''} ${img.groupName || ''}`.toLowerCase();
+      return haystack.includes(q);
+    });
     return json({ images: filtered.slice(offset, offset + limit), total: filtered.length, offset, limit });
   }
 

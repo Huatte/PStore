@@ -732,20 +732,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const addBtn = e.target.closest('.btn-add-group-img');
     if (addBtn) {
       const id = addBtn.dataset.id;
-      // prompt for image keys (comma/space separated) or use manage selection
-      const input = prompt('输入要加入合集的图片 key（用逗号或空格分隔）：\n提示：可在“管理图片”中查看 key。');
-      if (input === null) return;
-      const keys = input.split(/[,，\s]+/).map((k) => k.trim()).filter(Boolean);
-      if (keys.length === 0) { alert('未输入有效 key'); return; }
-      try {
-        const res = await fetch('/api/admin/group', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-admin-token': token() },
-          body: JSON.stringify({ action: 'add', id, keys }),
-        });
-        if (res.ok) { await loadGroups(); await loadManage(); }
-        else alert('添加失败');
-      } catch (err) { alert('网络错误'); }
+      openGroupPicker(id);
       return;
     }
 
@@ -765,6 +752,94 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch (err) { alert('网络错误'); }
       return;
     }
+  });
+
+  // --- group image picker (visual multi-select from all images) ---
+  const pickerModal = document.getElementById('group-picker-modal');
+  const pickerSearch = document.getElementById('group-picker-search');
+  const pickerGrid = document.getElementById('group-picker-grid');
+  const pickerConfirm = document.getElementById('group-picker-confirm');
+  const pickerClose = document.getElementById('group-picker-close');
+  const pickerCount = document.getElementById('group-picker-count');
+  let pickerGroupId = null;
+  let pickerAllImages = [];
+  const pickerSelected = new Set();
+
+  async function openGroupPicker(groupId) {
+    pickerGroupId = groupId;
+    pickerSelected.clear();
+    pickerSearch.value = '';
+    pickerModal.classList.remove('hidden');
+    pickerGrid.innerHTML = '<div class="empty-list">加载中…</div>';
+    try {
+      // load all images (no group dedup)
+      const all = [];
+      let offset = 0;
+      const PAGE = 100;
+      while (true) {
+        const res = await fetch(`/api/images?dedup=0&limit=${PAGE}&offset=${offset}`);
+        const data = await res.json();
+        const items = data.images || [];
+        all.push(...items);
+        offset += items.length;
+        if (!data.total || offset >= data.total || items.length === 0) break;
+      }
+      pickerAllImages = all;
+      renderPicker();
+    } catch (e) {
+      pickerGrid.innerHTML = '<div class="empty-list">加载失败</div>';
+    }
+  }
+
+  function renderPicker() {
+    const q = (pickerSearch.value || '').trim().toLowerCase();
+    const list = pickerAllImages.filter((img) => {
+      if (!q) return true;
+      return (img.name || '').toLowerCase().includes(q);
+    });
+    pickerGrid.innerHTML = '';
+    if (list.length === 0) {
+      pickerGrid.innerHTML = '<div class="empty-list">没有匹配的图片</div>';
+      return;
+    }
+    list.forEach((img) => {
+      const label = document.createElement('label');
+      label.className = 'picker-item';
+      label.innerHTML = `
+        <input type="checkbox" class="picker-check" value="${escapeHtml(img.key)}" ${pickerSelected.has(img.key) ? 'checked' : ''} />
+        <img class="picker-thumb" src="/img/${encodeURIComponent(img.key)}" alt="" onerror="this.style.visibility='hidden'" />
+        <span class="picker-name">${escapeHtml(img.name || img.key)}</span>`;
+      label.querySelector('.picker-check').addEventListener('change', (e) => {
+        if (e.target.checked) pickerSelected.add(img.key);
+        else pickerSelected.delete(img.key);
+        pickerCount.textContent = `已选 ${pickerSelected.size} 张`;
+      });
+      pickerGrid.appendChild(label);
+    });
+    pickerCount.textContent = `已选 ${pickerSelected.size} 张`;
+  }
+
+  pickerSearch.addEventListener('input', renderPicker);
+  pickerClose.addEventListener('click', () => pickerModal.classList.add('hidden'));
+  pickerModal.addEventListener('click', (e) => { if (e.target === pickerModal) pickerModal.classList.add('hidden'); });
+
+  pickerConfirm.addEventListener('click', async () => {
+    if (pickerSelected.size === 0) { alert('请先选择图片'); return; }
+    const keys = Array.from(pickerSelected);
+    pickerConfirm.disabled = true;
+    try {
+      const res = await fetch('/api/admin/group', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-token': token() },
+        body: JSON.stringify({ action: 'add', id: pickerGroupId, keys }),
+      });
+      if (res.ok) {
+        pickerModal.classList.add('hidden');
+        await loadGroups();
+        await loadManage();
+      } else alert('添加失败');
+    } catch (err) { alert('网络错误'); }
+    pickerConfirm.disabled = false;
   });
 
   // gallery cache bust

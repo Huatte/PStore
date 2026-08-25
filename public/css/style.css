@@ -29,6 +29,38 @@ body {
 .tagline { color: rgba(255,255,255,0.85); font-size: 13px; }
 .admin-link { margin-left: auto; color: #fff; background: rgba(255,255,255,0.18); padding: 6px 14px; border-radius: 20px; text-decoration: none; font-size: 13px; }
 .admin-link:hover { background: rgba(255,255,255,0.3); }
+.header-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.upload-link {
+  background: rgba(255,255,255,0.18); color: #fff; border: none;
+  padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: 600;
+}
+.upload-link:hover { background: rgba(255,255,255,0.32); }
+.header-actions .admin-link { margin-left: 0; }
+
+/* User upload modal */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100;
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.modal {
+  background: var(--card); border-radius: var(--radius); width: 100%; max-width: 420px;
+  padding: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+}
+.modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.modal-head h3 { margin: 0; }
+.modal-close { background: transparent; color: var(--muted); font-size: 22px; padding: 0 8px; }
+.modal-body { display: flex; flex-direction: column; gap: 10px; }
+.modal-body input, .modal-body button { margin-top: 0; }
+
+/* Image review items */
+.review-item {
+  display: flex; gap: 14px; background: var(--card2); border-radius: 10px; padding: 12px;
+  align-items: flex-start;
+}
+.review-thumb { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; background: var(--card); }
+.review-info { flex: 1; min-width: 0; }
+.review-info .actions { margin-top: 10px; display: flex; gap: 8px; }
+.review-info .actions button { font-size: 12px; padding: 6px 16px; border: none; border-radius: 6px; cursor: pointer; color: #fff; }
 
 /* Search bar */
 .search-bar { margin: 22px 0 0; }

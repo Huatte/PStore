@@ -19,8 +19,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     imageInfo = (data.images || []).find((i) => i.key === key);
   } catch (e) {}
 
+  bigImg.src = `/img/${encodeURIComponent(key)}`;
+  bigImg.onerror = () => {
+    bigImg.style.display = 'none';
+    meta.innerHTML = '<div style="color:#ff5c7a">图片加载失败：文件可能已被删除</div>';
+  };
+
   if (imageInfo) {
-    bigImg.src = imageInfo.url;
     bigImg.alt = imageInfo.name || key;
     meta.innerHTML = `
       <div>文件名：${escapeHtml(imageInfo.name || key)}</div>

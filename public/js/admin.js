@@ -55,6 +55,72 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // --- upload helpers ---
+  function formatSpeed(bytesPerSec) {
+    if (bytesPerSec >= 1024 * 1024) return `${(bytesPerSec / 1024 / 1024).toFixed(1)} MB/s`;
+    if (bytesPerSec >= 1024) return `${(bytesPerSec / 1024).toFixed(0)} KB/s`;
+    return `${bytesPerSec} B/s`;
+  }
+
+  function createUploadItem(file) {
+    const div = document.createElement('div');
+    div.className = 'upload-item';
+    div.innerHTML = `
+      <div class="ui-head">
+        <span class="ui-name">${escapeHtml(file.name)}</span>
+        <span class="ui-status">等待中</span>
+      </div>
+      <div class="ui-bar"><div class="ui-fill" style="width:0%"></div></div>
+      <div class="ui-meta"><span class="ui-speed">0 KB/s</span><span class="ui-pct">0%</span></div>`;
+    uploadResults.appendChild(div);
+    return {
+      root: div,
+      fill: div.querySelector('.ui-fill'),
+      status: div.querySelector('.ui-status'),
+      speedEl: div.querySelector('.ui-speed'),
+      pctEl: div.querySelector('.ui-pct'),
+    };
+  }
+
+  // Upload one file via XHR to get real progress events.
+  function uploadFileXhr(file, url, headers, extraFields, ui) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', url);
+      xhr.responseType = 'json';
+      for (const k in headers) xhr.setRequestHeader(k, headers[k]);
+
+      let lastLoaded = 0;
+      let lastTime = Date.now();
+      xhr.upload.onprogress = (e) => {
+        if (!e.lengthComputable) return;
+        const pct = Math.round((e.loaded / e.total) * 100);
+        const now = Date.now();
+        const dt = (now - lastTime) / 1000;
+        const speed = dt > 0 ? (e.loaded - lastLoaded) / dt : 0;
+        lastLoaded = e.loaded;
+        lastTime = now;
+        if (ui) {
+          ui.fill.style.width = pct + '%';
+          ui.pctEl.textContent = pct + '%';
+          ui.speedEl.textContent = formatSpeed(speed);
+          ui.status.textContent = '上传中';
+        }
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.response);
+        else reject((xhr.response && xhr.response.error) || `HTTP ${xhr.status}`);
+      };
+      xhr.onerror = () => reject('网络错误');
+      xhr.onabort = () => reject('已取消');
+
+      const fd = new FormData();
+      fd.append('file', file);
+      for (const k in extraFields) fd.append(k, extraFields[k]);
+      xhr.send(fd);
+    });
+  }
+
   // --- upload ---
   let uploading = false;
   uploadBtn.addEventListener('click', async () => {
@@ -74,30 +140,24 @@ document.addEventListener('DOMContentLoaded', () => {
     let ok = 0, fail = 0;
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const fd = new FormData();
-      fd.append('file', file);
-      if (group) fd.append('group', group);
-      uploadProgress.textContent = `正在上传 ${i + 1}/${files.length}：${file.name}`;
+      const ui = createUploadItem(file);
+      const extra = {};
+      if (group) extra.group = group;
+      uploadProgress.textContent = `正在上传 ${i + 1}/${files.length}`;
       uploadProgress.className = 'msg';
       try {
-        const res = await fetch('/api/upload', { method: 'POST', headers: { 'x-admin-token': t }, body: fd });
-        const data = await res.json();
-        if (res.ok) {
-          ok++;
-          const li = document.createElement('li');
-          li.textContent = `${file.name} — 上传成功`;
-          uploadResults.appendChild(li);
-        } else {
-          fail++;
-          const li = document.createElement('li');
-          li.textContent = `${file.name} — 失败：${data.error || '未知错误'}`;
-          uploadResults.appendChild(li);
-        }
-      } catch (e) {
+        const data = await uploadFileXhr(file, '/api/upload', { 'x-admin-token': t }, extra, ui);
+        ui.fill.style.width = '100%';
+        ui.pctEl.textContent = '100%';
+        ui.speedEl.textContent = '完成';
+        ui.status.textContent = '成功';
+        ui.status.classList.add('st-ok');
+        ok++;
+      } catch (err) {
         fail++;
-        const li = document.createElement('li');
-        li.textContent = `${file.name} — 网络错误`;
-        uploadResults.appendChild(li);
+        ui.status.textContent = '失败';
+        ui.status.classList.add('st-err');
+        ui.speedEl.textContent = err || '失败';
       }
     }
     // clear file input only after all uploads finish

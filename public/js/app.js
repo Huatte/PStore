@@ -36,8 +36,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const name = document.createElement('div');
       name.className = 'name';
       name.textContent = img.name || img.key;
+      const meta = document.createElement('div');
+      meta.className = 'item-meta';
+      meta.textContent = (img.uploader === 'admin') ? '管理员' : (img.uploader || '用户');
       a.appendChild(thumb);
       a.appendChild(name);
+      a.appendChild(meta);
       gallery.appendChild(a);
     });
   }

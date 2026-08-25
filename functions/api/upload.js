@@ -1,8 +1,8 @@
 import {
   gh,
-  readJson,
   writeJson,
   bytesToBase64,
+  decodeBase64ToString,
   json,
 } from '../_lib/github.js';
 
@@ -58,20 +58,23 @@ async function handle(context) {
   const imagePath = `images/${key}`;
   const g = gh(env);
 
-  // Upload binary to GitHub
+  // Upload binary to GitHub (putFile retries on 409/503)
   const existing = await g.getContents(imagePath).catch(() => null);
   if (!existing) {
     await g.putFile(imagePath, bytesToBase64(bytes), `upload image ${key}`);
   }
 
-  // Only continue if the image file actually exists in the repo now
-  const verified = await g.getContents(imagePath).catch(() => null);
-  if (!verified) {
-    return json({ error: 'image upload failed; not indexed' }, 500);
+  // Read current images.json index + sha in one call
+  const indexMeta = await g.getContents('data/images.json').catch(() => null);
+  let images = [];
+  if (indexMeta && indexMeta.content) {
+    try {
+      images = JSON.parse(decodeBase64ToString(indexMeta.content.replace(/\n/g, '')));
+      if (!Array.isArray(images)) images = [];
+    } catch (_) { images = []; }
   }
+  const indexSha = indexMeta ? indexMeta.sha : null;
 
-  // Update images.json metadata
-  const images = await readJson(env, 'data/images.json', []);
   const ts = Date.now();
   const record = {
     key,
@@ -88,12 +91,7 @@ async function handle(context) {
   else images.push(record);
   images.sort((a, b) => b.addedAt - a.addedAt);
 
-  let sha = null;
-  try {
-    const meta = await g.getContents('data/images.json');
-    if (meta && meta.sha) sha = meta.sha;
-  } catch (_) {}
-  await writeJson(env, 'data/images.json', images, `update images index (${key})`, sha);
+  await writeJson(env, 'data/images.json', images, `update images index (${key})`, indexSha);
 
   return json({ ok: true, ...record });
 }

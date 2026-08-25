@@ -1,4 +1,4 @@
-import { readJson, json } from '../../_lib/github.js';
+import { readJson, json, imgInGroup } from '../../_lib/github.js';
 
 export async function onRequestGet(context) {
   const { env, request } = context;
@@ -9,7 +9,7 @@ export async function onRequestGet(context) {
   const groups = await readJson(env, 'data/groups.json', []);
   const images = await readJson(env, 'data/images.json', []);
   const groupList = (Array.isArray(groups) ? groups : []).map((g) => {
-    const members = (Array.isArray(images) ? images : []).filter((i) => i.group === g.id);
+    const members = (Array.isArray(images) ? images : []).filter((i) => imgInGroup(i, g.id));
     return {
       id: g.id,
       name: g.name || g.id,

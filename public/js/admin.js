@@ -783,8 +783,25 @@ document.addEventListener('DOMContentLoaded', () => {
   let pickerLoading = false;
   const pickerSelected = new Set();
 
-  // Load images for the picker. If a search term is provided, query the backend
-  // (which matches by name); otherwise load the first page only.
+  const pickerUngrouped = document.getElementById('picker-ungrouped');
+  const pickerTime = document.getElementById('picker-time');
+
+  // Compute the 'from' timestamp for the selected time filter.
+  function pickerFromTs() {
+    const v = pickerTime ? pickerTime.value : '';
+    if (!v) return '';
+    const now = Date.now();
+    if (v === 'today') {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      return String(d.getTime());
+    }
+    if (v === '7d') return String(now - 7 * 24 * 3600 * 1000);
+    if (v === '30d') return String(now - 30 * 24 * 3600 * 1000);
+    return '';
+  }
+
+  // Load images for the picker. Combines search + filters.
   async function pickerLoad(q) {
     if (pickerLoading) return;
     pickerLoading = true;
@@ -792,6 +809,9 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const params = new URLSearchParams({ dedup: '0', limit: '100', offset: '0' });
       if (q) params.set('q', q);
+      if (pickerUngrouped && pickerUngrouped.checked) params.set('ungrouped', '1');
+      const fromTs = pickerFromTs();
+      if (fromTs) params.set('from', fromTs);
       const res = await fetch(`/api/images?${params.toString()}`);
       const data = await res.json();
       pickerAllImages = data.images || [];
@@ -837,10 +857,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   let pickerDebounce = null;
-  pickerSearch.addEventListener('input', () => {
+  function pickerReload() {
     clearTimeout(pickerDebounce);
     pickerDebounce = setTimeout(() => pickerLoad((pickerSearch.value || '').trim()), 300);
-  });
+  }
+  pickerSearch.addEventListener('input', pickerReload);
+  if (pickerUngrouped) pickerUngrouped.addEventListener('change', pickerReload);
+  if (pickerTime) pickerTime.addEventListener('change', pickerReload);
   pickerClose.addEventListener('click', () => pickerModal.classList.add('hidden'));
   pickerModal.addEventListener('click', (e) => { if (e.target === pickerModal) pickerModal.classList.add('hidden'); });
 

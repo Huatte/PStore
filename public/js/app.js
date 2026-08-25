@@ -22,11 +22,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const shownKeys = new Set();
+  const shownGroups = new Set();
 
   function appendImages(images) {
     images.forEach((img) => {
       // skip already-shown keys (dedup across pagination)
       if (shownKeys.has(img.key)) return;
+      // a group (merged detail page) shows as ONE card on the homepage
+      if (img.group && shownGroups.has(img.group)) return;
 
       const a = document.createElement('a');
       a.className = 'item';
@@ -57,6 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
       gallery.appendChild(a);
 
       shownKeys.add(img.key);
+      if (img.group) shownGroups.add(img.group);
     });
   }
 
@@ -89,6 +93,16 @@ document.addEventListener('DOMContentLoaded', () => {
     } finally {
       loading = false;
     }
+    // If the page still has no scrollbar (e.g. few visible cards), keep loading
+    // more pages until there is something to scroll, or everything is loaded.
+    if (!done && !hasScrollbar()) {
+      loadMore();
+    }
+  }
+
+  function hasScrollbar() {
+    const html = document.documentElement;
+    return html.scrollHeight > html.clientHeight + 4;
   }
 
   // debounced server-side search
@@ -104,6 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
       total = Infinity;
       gallery.innerHTML = '';
       shownKeys.clear();
+      shownGroups.clear();
       loadMore();
     }, 300);
   }

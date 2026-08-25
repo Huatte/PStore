@@ -104,7 +104,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // Show/hide the retry button based on pending failures
   function updateRetryBtn() {
     if (!retryBtn) return;
-    retryBtn.style.display = failedUploads.length ? 'inline-block' : 'none';
+    if (failedUploads.length) {
+      retryBtn.classList.remove('hidden');
+      retryBtn.style.display = 'inline-block';
+    } else {
+      retryBtn.classList.add('hidden');
+      retryBtn.style.display = 'none';
+    }
     retryBtn.textContent = `重试失败的上传 (${failedUploads.length})`;
   }
 

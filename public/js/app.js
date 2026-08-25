@@ -21,16 +21,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  const shownGroups = new Set();
   const shownKeys = new Set();
 
   function appendImages(images) {
     images.forEach((img) => {
       // skip already-shown keys (dedup across pagination)
       if (shownKeys.has(img.key)) return;
-
-      // if this image belongs to a group already displayed, skip it (group card shown once)
-      if (img.group && shownGroups.has(img.group)) return;
 
       const a = document.createElement('a');
       a.className = 'item';
@@ -46,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const name = document.createElement('div');
       name.className = 'name';
-      name.textContent = img.group ? `${img.name || img.key}` : (img.name || img.key);
+      name.textContent = img.name || img.key;
 
       const meta = document.createElement('div');
       meta.className = 'item-meta';
@@ -61,7 +57,6 @@ document.addEventListener('DOMContentLoaded', () => {
       gallery.appendChild(a);
 
       shownKeys.add(img.key);
-      if (img.group) shownGroups.add(img.group);
     });
   }
 
@@ -109,7 +104,6 @@ document.addEventListener('DOMContentLoaded', () => {
       total = Infinity;
       gallery.innerHTML = '';
       shownKeys.clear();
-      shownGroups.clear();
       loadMore();
     }, 300);
   }

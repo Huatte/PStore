@@ -248,31 +248,26 @@ document.addEventListener('DOMContentLoaded', () => {
   closeBtn.addEventListener('click', () => { if (!uploading) modal.classList.add('hidden'); });
   modal.addEventListener('click', (e) => { if (e.target === modal && !uploading) modal.classList.add('hidden'); });
 
-  uploadSubmit.addEventListener('click', async () => {
-    if (uploading) return; // block while an upload is in progress
-    const files = Array.from(uploadFile.files || []);
-    if (files.length === 0) { showUploadMsg('请先选择图片', 'err'); return; }
-    const nickname = uploadNick.value.trim();
-    if (!nickname) { showUploadMsg('请填写昵称', 'err'); uploadNick.focus(); return; }
+  // Track failed uploads so they can be retried in one click
+  let failedUploads = []; // each: { file, extra }
 
-    const mode = document.querySelector('input[name="upload-mode"]:checked').value;
-    // one group id shared by all files when merging
-    const group = mode === 'merge' ? `g${Date.now()}${Math.random().toString(36).slice(2, 8)}` : '';
+  // Show/hide the retry button based on pending failures
+  function updateRetryBtn() {
+    const btn = document.getElementById('retry-failed');
+    if (!btn) return;
+    btn.style.display = failedUploads.length ? 'inline-block' : 'none';
+    btn.textContent = `重试失败的上传 (${failedUploads.length})`;
+  }
 
-    uploading = true;
-    uploadSubmit.disabled = true;
-    uploadSubmit.textContent = '上传中…';
-    uploadList.innerHTML = '';
-
+  async function runUploads(uploads) {
     let ok = 0, fail = 0;
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      showUploadMsg(`正在上传 ${i + 1}/${files.length}`, '');
+    const newlyFailed = [];
+    for (let i = 0; i < uploads.length; i++) {
+      const { file, extra } = uploads[i];
+      showUploadMsg(`正在上传 ${i + 1}/${uploads.length}`, '');
       const ui = createUploadItem(file);
-      const extra = { uploader: nickname };
-      if (group) extra.group = group;
       try {
-        const data = await uploadFileXhr(file, extra, ui);
+        await uploadFileXhr(file, extra, ui);
         ui.fill.style.width = '100%';
         ui.pctEl.textContent = '100%';
         ui.speedEl.textContent = '完成';
@@ -284,18 +279,56 @@ document.addEventListener('DOMContentLoaded', () => {
         ui.status.classList.add('st-err');
         ui.speedEl.textContent = err || '失败';
         fail++;
+        newlyFailed.push({ file, extra });
       }
     }
-
-    uploading = false;
-    uploadSubmit.disabled = false;
-    uploadSubmit.textContent = '提交审核';
+    failedUploads = newlyFailed;
+    updateRetryBtn();
     if (fail === 0) {
       showUploadMsg(`上传成功 ${ok} 张，等待管理员审核。`, 'ok');
       uploadFile.value = '';
     } else {
       showUploadMsg(`完成：成功 ${ok} 张，失败 ${fail} 张`, 'err');
     }
+  }
+
+  const retryBtn = document.getElementById('retry-failed');
+  if (retryBtn) {
+    retryBtn.addEventListener('click', () => {
+      if (uploading || failedUploads.length === 0) return;
+      const retries = failedUploads;
+      uploadList.innerHTML = '';
+      runUploads(retries);
+    });
+  }
+
+  uploadSubmit.addEventListener('click', async () => {
+    if (uploading) return; // block while an upload is in progress
+    const files = Array.from(uploadFile.files || []);
+    if (files.length === 0) { showUploadMsg('请先选择图片', 'err'); return; }
+    const nickname = uploadNick.value.trim();
+    if (!nickname) { showUploadMsg('请填写昵称', 'err'); uploadNick.focus(); return; }
+
+    const mode = document.querySelector('input[name="upload-mode"]:checked').value;
+    // one group id shared by all files when merging
+    const group = mode === 'merge' ? `g${Date.now()}${Math.random().toString(36).slice(2, 8)}` : '';
+
+    const uploads = files.map((file) => {
+      const extra = { uploader: nickname };
+      if (group) extra.group = group;
+      return { file, extra };
+    });
+
+    uploading = true;
+    uploadSubmit.disabled = true;
+    uploadSubmit.textContent = '上传中…';
+    uploadList.innerHTML = '';
+
+    await runUploads(uploads);
+
+    uploading = false;
+    uploadSubmit.disabled = false;
+    uploadSubmit.textContent = '提交审核';
   });
 
   // initial load

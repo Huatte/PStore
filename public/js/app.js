@@ -145,12 +145,79 @@ document.addEventListener('DOMContentLoaded', () => {
   const uploadNick = document.getElementById('upload-nickname');
   const uploadSubmit = document.getElementById('upload-submit');
   const uploadMsg = document.getElementById('upload-msg');
+  const uploadList = document.getElementById('upload-list');
 
   let uploading = false;
 
   function showUploadMsg(text, cls) {
     uploadMsg.textContent = text;
     uploadMsg.className = `msg ${cls}`;
+  }
+
+  function formatSpeed(bytesPerSec) {
+    if (bytesPerSec >= 1024 * 1024) return `${(bytesPerSec / 1024 / 1024).toFixed(1)} MB/s`;
+    if (bytesPerSec >= 1024) return `${(bytesPerSec / 1024).toFixed(0)} KB/s`;
+    return `${bytesPerSec} B/s`;
+  }
+
+  function createUploadItem(file) {
+    const div = document.createElement('div');
+    div.className = 'upload-item';
+    div.innerHTML = `
+      <div class="ui-head">
+        <span class="ui-name">${escapeHtml(file.name)}</span>
+        <span class="ui-status">等待中</span>
+      </div>
+      <div class="ui-bar"><div class="ui-fill" style="width:0%"></div></div>
+      <div class="ui-meta"><span class="ui-speed">0 KB/s</span><span class="ui-pct">0%</span></div>`;
+    uploadList.appendChild(div);
+    return {
+      root: div,
+      fill: div.querySelector('.ui-fill'),
+      status: div.querySelector('.ui-status'),
+      speedEl: div.querySelector('.ui-speed'),
+      pctEl: div.querySelector('.ui-pct'),
+    };
+  }
+
+  // Upload one file via XHR to get real progress events.
+  function uploadFileXhr(file, extraFields, ui) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/user/upload');
+      xhr.responseType = 'json';
+
+      let lastLoaded = 0;
+      let lastTime = Date.now();
+
+      xhr.upload.onprogress = (e) => {
+        if (!e.lengthComputable) return;
+        const pct = Math.round((e.loaded / e.total) * 100);
+        const now = Date.now();
+        const dt = (now - lastTime) / 1000;
+        const speed = dt > 0 ? (e.loaded - lastLoaded) / dt : 0;
+        lastLoaded = e.loaded;
+        lastTime = now;
+        if (ui) {
+          ui.fill.style.width = pct + '%';
+          ui.pctEl.textContent = pct + '%';
+          ui.speedEl.textContent = formatSpeed(speed);
+          ui.status.textContent = '上传中';
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.response);
+        else reject((xhr.response && xhr.response.error) || `HTTP ${xhr.status}`);
+      };
+      xhr.onerror = () => reject('网络错误');
+      xhr.onabort = () => reject('已取消');
+
+      const fd = new FormData();
+      fd.append('file', file);
+      for (const k in extraFields) fd.append(k, extraFields[k]);
+      xhr.send(fd);
+    });
   }
 
   openBtn.addEventListener('click', () => { if (!uploading) modal.classList.remove('hidden'); });
@@ -169,26 +236,28 @@ document.addEventListener('DOMContentLoaded', () => {
     uploading = true;
     uploadSubmit.disabled = true;
     uploadSubmit.textContent = '上传中…';
+    uploadList.innerHTML = '';
 
     let ok = 0, fail = 0;
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      showUploadMsg(`正在上传 ${i + 1}/${files.length}：${file.name}`, '');
-      const fd = new FormData();
-      fd.append('file', file);
-      fd.append('uploader', uploadNick.value || '');
-      if (group) fd.append('group', group);
+      showUploadMsg(`正在上传 ${i + 1}/${files.length}`, '');
+      const ui = createUploadItem(file);
+      const extra = { uploader: uploadNick.value || '' };
+      if (group) extra.group = group;
       try {
-        const res = await fetch('/api/user/upload', { method: 'POST', body: fd });
-        const data = await res.json();
-        if (res.ok) ok++;
-        else {
-          fail++;
-          showUploadMsg(`${file.name} 失败：${data.error || '未知错误'}`, 'err');
-        }
-      } catch (e) {
+        const data = await uploadFileXhr(file, extra, ui);
+        ui.fill.style.width = '100%';
+        ui.pctEl.textContent = '100%';
+        ui.speedEl.textContent = '完成';
+        ui.status.textContent = '成功';
+        ui.status.classList.add('st-ok');
+        ok++;
+      } catch (err) {
+        ui.status.textContent = '失败';
+        ui.status.classList.add('st-err');
+        ui.speedEl.textContent = err || '失败';
         fail++;
-        showUploadMsg(`${file.name} 失败：网络错误`, 'err');
       }
     }
 
@@ -199,7 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
       showUploadMsg(`上传成功 ${ok} 张，等待管理员审核。`, 'ok');
       uploadFile.value = '';
     } else {
-      showUploadMsg(`完成：成功 ${ok} 张，失败 ${fail} 张`, fail > 0 ? 'err' : 'ok');
+      showUploadMsg(`完成：成功 ${ok} 张，失败 ${fail} 张`, 'err');
     }
   });
 

@@ -4,7 +4,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const uploadSubmit = document.getElementById('upload-submit');
   const uploadMsg = document.getElementById('upload-msg');
   const uploadList = document.getElementById('upload-list');
+  const uploadGroupName = document.getElementById('upload-group-name');
   const retryBtn = document.getElementById('retry-failed');
+
+  // Toggle the group-name field when switching upload mode
+  document.querySelectorAll('input[name="upload-mode"]').forEach((r) => {
+    r.addEventListener('change', () => {
+      const isMerge = document.querySelector('input[name="upload-mode"]:checked').value === 'merge';
+      if (uploadGroupName) uploadGroupName.style.display = isMerge ? 'block' : 'none';
+    });
+  });
 
   let uploading = false;
   let failedUploads = []; // each: { file, extra }
@@ -184,11 +193,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!nickname) { showUploadMsg('请填写昵称', 'err'); uploadNick.focus(); return; }
 
     const mode = document.querySelector('input[name="upload-mode"]:checked').value;
-    const group = mode === 'merge' ? `g${Date.now()}${Math.random().toString(36).slice(2, 8)}` : '';
+    let groupName = '';
+    if (mode === 'merge') {
+      groupName = uploadGroupName.value.trim();
+      if (!groupName) { showUploadMsg('请填写合集名称', 'err'); uploadGroupName.focus(); return; }
+    }
 
     const uploads = files.map((file) => {
       const extra = { uploader: nickname };
-      if (group) extra.group = group;
+      if (groupName) extra.groupName = groupName;
       return { file, extra };
     });
 

@@ -30,6 +30,7 @@
         <button class="tab" data-tab="image-review">图片审核</button>
         <button class="tab" data-tab="moderate">留言审核</button>
         <button class="tab" data-tab="manage">管理图片</button>
+        <button class="tab" data-tab="groups">合集管理</button>
         <button id="logout-btn" class="logout">退出</button>
       </nav>
 
@@ -93,9 +94,20 @@
           <div id="manage-list" class="gallery small"></div>
         </div>
       </div>
+
+      <!-- groups tab -->
+      <div class="tab-panel hidden" id="tab-groups">
+        <div class="card">
+          <h3>合集管理</h3>
+          <div class="bulk-bar">
+            <button id="group-create-btn" class="btn-bulk-ok">新建合集</button>
+          </div>
+          <div id="group-list"></div>
+        </div>
+      </div>
     </section>
   </main>
 
-  <script src="/js/admin.js?v=16"></script>
+  <script src="/js/admin.js?v=26"></script>
 </body>
 </html>

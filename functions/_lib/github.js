@@ -1,3 +1,5 @@
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 export const gh = (env) => {
   const REPO = env.GH_REPO;
   const BRANCH = env.GH_BRANCH || 'main';
@@ -15,26 +17,54 @@ export const gh = (env) => {
     throw new Error(`GitHub get failed: ${r.status} ${await r.text()}`);
   }
 
-  async function putFile(path, contentBase64, commitMsg, sha) {
-    const body = { message: commitMsg, content: contentBase64, branch: BRANCH };
-    if (sha) body.sha = sha;
-    const url = `https://api.github.com/repos/${REPO}/contents/${path}`;
-    const r = await fetch(url, { method: 'PUT', headers, body: JSON.stringify(body) });
-    if (r.status !== 200 && r.status !== 201) {
-      throw new Error(`GitHub put failed: ${r.status} ${await r.text()}`);
+  async function putFile(path, contentBase64, commitMsg, sha, retries = 5) {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      const body = { message: commitMsg, content: contentBase64, branch: BRANCH };
+      if (sha) body.sha = sha;
+      const url = `https://api.github.com/repos/${REPO}/contents/${path}`;
+      const r = await fetch(url, { method: 'PUT', headers, body: JSON.stringify(body) });
+      if (r.status === 200 || r.status === 201) {
+        return await r.json();
+      }
+      const text = await r.text();
+      if (r.status === 409 && attempt < retries) {
+        // sha conflict: re-read the latest sha and retry with it
+        try {
+          const latest = await getContents(path);
+          if (latest && latest.sha) sha = latest.sha;
+        } catch (_) {}
+        await sleep(250 * (attempt + 1));
+        continue;
+      }
+      if ((r.status === 503 || r.status === 429 || r.status === 403) && attempt < retries) {
+        // rate limited / overloaded: respect Retry-After if provided, else back off
+        const retryAfter = parseInt(r.headers.get('retry-after') || '0', 10);
+        await sleep(retryAfter > 0 ? retryAfter * 1000 : 1000 * (attempt + 1) + Math.random() * 400);
+        continue;
+      }
+      throw new Error(`GitHub put failed: ${r.status} ${text}`);
     }
-    return await r.json();
+    throw new Error(`GitHub put failed after ${retries + 1} attempts`);
   }
 
-  async function deleteFile(path, commitMsg, sha) {
-    const body = { message: commitMsg, branch: BRANCH };
-    if (sha) body.sha = sha;
-    const url = `https://api.github.com/repos/${REPO}/contents/${path}`;
-    const r = await fetch(url, { method: 'DELETE', headers, body: JSON.stringify(body) });
-    if (r.status !== 200) {
-      throw new Error(`GitHub delete failed: ${r.status} ${await r.text()}`);
+  async function deleteFile(path, commitMsg, sha, retries = 3) {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      const body = { message: commitMsg, branch: BRANCH };
+      if (sha) body.sha = sha;
+      const url = `https://api.github.com/repos/${REPO}/contents/${path}`;
+      const r = await fetch(url, { method: 'DELETE', headers, body: JSON.stringify(body) });
+      if (r.status === 200) {
+        return await r.json();
+      }
+      const text = await r.text();
+      if (r.status === 503 || r.status === 429) {
+        const retryAfter = parseInt(r.headers.get('retry-after') || '0', 10);
+        await sleep(retryAfter > 0 ? retryAfter * 1000 : 1000 * (attempt + 1) + Math.random() * 400);
+        continue;
+      }
+      throw new Error(`GitHub delete failed: ${r.status} ${text}`);
     }
-    return await r.json();
+    throw new Error(`GitHub delete failed after ${retries + 1} attempts`);
   }
 
   return { getContents, putFile, deleteFile, REPO, BRANCH };

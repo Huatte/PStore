@@ -186,9 +186,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
       let lastLoaded = 0;
       let lastTime = Date.now();
+      const startTime = Date.now();
+      let simulatePct = 0;
+
+      // Fallback simulation so the bar always moves even if the browser
+      // doesn't fire lengthComputable progress events (common behind proxies/CDN).
+      const simTimer = setInterval(() => {
+        const elapsed = (Date.now() - startTime) / 1000;
+        // ease toward ~90% then slow down; real completion is set on load
+        const target = 90;
+        simulatePct = Math.min(target, simulatePct + Math.max(0.3, (target - simulatePct) * 0.15));
+        const pct = Math.round(simulatePct);
+        // estimated speed = bytes transferred so far / elapsed
+        const estimatedBytes = file.size * (simulatePct / 100);
+        const speed = elapsed > 0 ? estimatedBytes / elapsed : 0;
+        if (ui) {
+          ui.fill.style.width = pct + '%';
+          ui.pctEl.textContent = pct + '%';
+          ui.speedEl.textContent = formatSpeed(speed);
+          ui.status.textContent = '上传中';
+        }
+      }, 200);
 
       xhr.upload.onprogress = (e) => {
         if (!e.lengthComputable) return;
+        clearInterval(simTimer);
         const pct = Math.round((e.loaded / e.total) * 100);
         const now = Date.now();
         const dt = (now - lastTime) / 1000;
@@ -204,11 +226,12 @@ document.addEventListener('DOMContentLoaded', () => {
       };
 
       xhr.onload = () => {
+        clearInterval(simTimer);
         if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.response);
         else reject((xhr.response && xhr.response.error) || `HTTP ${xhr.status}`);
       };
-      xhr.onerror = () => reject('网络错误');
-      xhr.onabort = () => reject('已取消');
+      xhr.onerror = () => { clearInterval(simTimer); reject('网络错误'); };
+      xhr.onabort = () => { clearInterval(simTimer); reject('已取消'); };
 
       const fd = new FormData();
       fd.append('file', file);

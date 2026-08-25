@@ -22,14 +22,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const shownKeys = new Set();
-  const shownGroups = new Set();
 
   function appendImages(images) {
     images.forEach((img) => {
-      // skip already-shown keys (dedup across pagination)
+      // skip already-shown keys (safety, backend already dedupes groups)
       if (shownKeys.has(img.key)) return;
-      // a group (merged detail page) shows as ONE card on the homepage
-      if (img.group && shownGroups.has(img.group)) return;
 
       const a = document.createElement('a');
       a.className = 'item';
@@ -60,7 +57,6 @@ document.addEventListener('DOMContentLoaded', () => {
       gallery.appendChild(a);
 
       shownKeys.add(img.key);
-      if (img.group) shownGroups.add(img.group);
     });
   }
 
@@ -118,7 +114,6 @@ document.addEventListener('DOMContentLoaded', () => {
       total = Infinity;
       gallery.innerHTML = '';
       shownKeys.clear();
-      shownGroups.clear();
       loadMore();
     }, 300);
   }

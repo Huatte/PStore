@@ -114,29 +114,49 @@ document.addEventListener('DOMContentLoaded', () => {
     retryBtn.textContent = `重试失败的上传 (${failedUploads.length})`;
   }
 
+  // Upload all files in parallel (limited concurrency to avoid hammering the
+  // GitHub API / Cloudflare). Each file gets its own progress bar.
   async function runUploads(uploads) {
+    const MAX_CONCURRENT = 6;
     let ok = 0, fail = 0;
     const newlyFailed = [];
-    for (let i = 0; i < uploads.length; i++) {
-      const { file, extra } = uploads[i];
-      showUploadMsg(`正在上传 ${i + 1}/${uploads.length}`, '');
-      const ui = createUploadItem(file);
-      try {
-        await uploadFileXhr(file, extra, ui);
-        ui.fill.style.width = '100%';
-        ui.pctEl.textContent = '100%';
-        ui.speedEl.textContent = '完成';
-        ui.status.textContent = '成功';
-        ui.status.classList.add('st-ok');
-        ok++;
-      } catch (err) {
-        ui.status.textContent = '失败';
-        ui.status.classList.add('st-err');
-        ui.speedEl.textContent = err || '失败';
-        fail++;
-        newlyFailed.push({ file, extra });
+
+    // Create UI entries for all files up front
+    const items = uploads.map(({ file }) => ({ file, ui: createUploadItem(file) }));
+    showUploadMsg(`开始上传 ${uploads.length} 个文件（并行）`, '');
+
+    let cursor = 0;
+    async function worker() {
+      while (true) {
+        const idx = cursor++;
+        if (idx >= uploads.length) break;
+        const { file, extra } = uploads[idx];
+        const { ui } = items[idx];
+        ui.status.textContent = '上传中';
+        try {
+          await uploadFileXhr(file, extra, ui);
+          ui.fill.style.width = '100%';
+          ui.pctEl.textContent = '100%';
+          ui.speedEl.textContent = '完成';
+          ui.status.textContent = '成功';
+          ui.status.classList.add('st-ok');
+          ok++;
+        } catch (err) {
+          ui.status.textContent = '失败';
+          ui.status.classList.add('st-err');
+          ui.speedEl.textContent = err || '失败';
+          fail++;
+          newlyFailed.push({ file, extra });
+        }
       }
     }
+
+    // Start N concurrent workers
+    const workerCount = Math.min(MAX_CONCURRENT, uploads.length);
+    const workers = [];
+    for (let i = 0; i < workerCount; i++) workers.push(worker());
+    await Promise.all(workers);
+
     failedUploads = newlyFailed;
     updateRetryBtn();
     if (fail === 0) {

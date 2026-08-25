@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>管理员 · PStore</title>
-  <link rel="stylesheet" href="/css/style.css?v=8" />
+  <link rel="stylesheet" href="/css/style.css?v=9" />
 </head>
 <body>
   <header class="site-header">
@@ -48,6 +48,11 @@
       <div class="tab-panel hidden" id="tab-image-review">
         <div class="card">
           <h3>图片审核 <span id="image-pending-count" class="badge"></span></h3>
+          <div class="bulk-bar">
+            <label class="bulk-check"><input type="checkbox" id="review-select-all" /> 全选</label>
+            <button id="review-bulk-approve" class="btn-bulk-ok">批量通过</button>
+            <button id="review-bulk-reject" class="btn-bulk-bad">批量拒绝</button>
+          </div>
           <div id="image-review-list" class="comment-list"></div>
         </div>
       </div>
@@ -67,12 +72,16 @@
           <div class="search-bar">
             <input id="manage-search" type="text" placeholder="搜索图片名称…" autocomplete="off" />
           </div>
+          <div class="bulk-bar">
+            <label class="bulk-check"><input type="checkbox" id="manage-select-all" /> 全选</label>
+            <button id="manage-bulk-delete" class="btn-bulk-bad">批量删除</button>
+          </div>
           <div id="manage-list" class="gallery small"></div>
         </div>
       </div>
     </section>
   </main>
 
-  <script src="/js/admin.js?v=8"></script>
+  <script src="/js/admin.js?v=9"></script>
 </body>
 </html>

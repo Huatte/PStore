@@ -42,6 +42,12 @@ body {
   position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100;
   display: flex; align-items: center; justify-content: center; padding: 16px;
 }
+.upload-mode {
+  display: flex; gap: 16px; font-size: 13px; color: var(--muted);
+  padding: 4px 0; flex-wrap: wrap;
+}
+.upload-mode label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+.upload-mode input { accent-color: var(--accent); cursor: pointer; }
 .modal {
   background: var(--card); border-radius: var(--radius); width: 100%; max-width: 420px;
   padding: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
@@ -99,7 +105,22 @@ body {
 /* Detail */
 .back { margin: 18px 0 6px; }
 .back a { color: var(--accent); text-decoration: none; font-size: 14px; }
-.detail-img img { width: 100%; max-height: 70vh; object-fit: contain; background: var(--card); border-radius: var(--radius); }
+.detail-figure { margin: 0 0 20px; }
+.detail-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  background: var(--card);
+  border-radius: var(--radius);
+  /* no max-height shrink: preserves true aspect ratio, long screenshots scroll naturally */
+}
+.detail-figure figcaption {
+  font-size: 12px; color: var(--muted); text-align: center; padding: 8px 0 0;
+}
+.group-title {
+  display: none; color: var(--accent); font-size: 14px; margin: 6px 0 12px;
+}
 .detail-meta { margin: 12px 0; color: var(--muted); font-size: 13px; word-break: break-all; }
 
 /* Comments */

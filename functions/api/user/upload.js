@@ -82,6 +82,22 @@ async function handle(context) {
     if (idx >= 0) pendings[idx] = { ...pendings[idx], addedAt: ts, uploader };
     else pendings.push(rec);
 
+    // If this image belongs to a group that isn't registered in groups.json yet,
+    // register it so it shows up in the admin 合集管理 panel.
+    if (group) {
+      const groups = await readJson(env, 'data/groups.json', []);
+      const groupList = Array.isArray(groups) ? groups : [];
+      if (!groupList.find((gr) => gr.id === group)) {
+        groupList.push({ id: group, name: group, createdAt: ts });
+        let gsha = null;
+        try {
+          const gm = await g.getContents('data/groups.json');
+          if (gm && gm.sha) gsha = gm.sha;
+        } catch (_) {}
+        await writeJson(env, 'data/groups.json', groupList, `register group ${group}`, gsha);
+      }
+    }
+
     let sha = null;
     try {
       const meta = await g.getContents('data/pending_images.json');

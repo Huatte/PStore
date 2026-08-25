@@ -1,4 +1,4 @@
-import { gh, readJson, writeJson, json, withLock } from '../../_lib/github.js';
+import { gh, readJson, writeJson, json, withLock, imgGroups, withGroups, imgInGroup } from '../../_lib/github.js';
 
 function makeGroupId() {
   return `g${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
@@ -62,7 +62,7 @@ export async function onRequestPost(context) {
     }
 
     if (action === 'delete') {
-      // remove group record + clear group on all its images
+      // remove group record + remove it from all images' groups arrays
       const remaining = groupList.filter((gr) => gr.id !== id);
       let gsha = null;
       try {
@@ -72,7 +72,9 @@ export async function onRequestPost(context) {
       await writeJson(env, 'data/groups.json', remaining, `delete group ${id}`, gsha);
 
       const changed = imageList.map((img) => {
-        if (img.group === id) { const c = { ...img }; delete c.group; return c; }
+        if (imgInGroup(img, id)) {
+          return withGroups(img, imgGroups(img).filter((g) => g !== id));
+        }
         return img;
       });
       let isha = null;
@@ -92,11 +94,11 @@ export async function onRequestPost(context) {
       const changed = imageList.map((img) => {
         if (!keys.includes(img.key)) return img;
         if (action === 'add') {
-          return { ...img, group: id };
+          const gs = imgGroups(img);
+          if (!gs.includes(id)) return withGroups(img, [...gs, id]);
+          return img;
         } else {
-          const c = { ...img };
-          delete c.group;
-          return c;
+          return withGroups(img, imgGroups(img).filter((g) => g !== id));
         }
       });
       let isha = null;

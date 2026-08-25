@@ -132,7 +132,13 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateAdminRetryBtn() {
     const btn = document.getElementById('admin-retry-failed');
     if (!btn) return;
-    btn.style.display = adminFailed.length ? 'inline-block' : 'none';
+    if (adminFailed.length) {
+      btn.classList.remove('hidden');
+      btn.style.display = 'inline-block';
+    } else {
+      btn.classList.add('hidden');
+      btn.style.display = 'none';
+    }
     btn.textContent = `重试失败的上传 (${adminFailed.length})`;
   }
 

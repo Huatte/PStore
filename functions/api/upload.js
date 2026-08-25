@@ -63,12 +63,18 @@ async function handle(context) {
     await g.putFile(imagePath, bytesToBase64(bytes), `upload image ${key}`);
   }
 
+  // Only continue if the image file actually exists in the repo now
+  const verified = await g.getContents(imagePath).catch(() => null);
+  if (!verified) {
+    return json({ error: 'image upload failed; not indexed' }, 500);
+  }
+
   // Update images.json metadata
   const images = await readJson(env, 'data/images.json', []);
   const ts = Date.now();
   const record = {
     key,
-    url: `https://raw.githubusercontent.com/${g.REPO}/${g.BRANCH}/${imagePath}`,
+    url: `/img/${key}`,
     name: file.name || key,
     size: file.size,
     type: file.type,

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>管理员 · PStore</title>
-  <link rel="stylesheet" href="/css/style.css?v=12" />
+  <link rel="stylesheet" href="/css/style.css?v=13" />
 </head>
 <body>
   <header class="site-header">
@@ -64,8 +64,16 @@
       <!-- moderate tab -->
       <div class="tab-panel hidden" id="tab-moderate">
         <div class="card">
-          <h3>留言审核 <span id="pending-count" class="badge"></span></h3>
+          <h3>留言管理</h3>
+          <div class="search-bar">
+            <input id="moderate-search" type="text" placeholder="搜索留言ID、内容或昵称…" autocomplete="off" />
+          </div>
           <div id="moderate-list" class="comment-list"></div>
+          <div class="pager">
+            <button id="moderate-prev" class="btn-pager">上一页</button>
+            <span id="moderate-info" class="pager-info"></span>
+            <button id="moderate-next" class="btn-pager">下一页</button>
+          </div>
         </div>
       </div>
 
@@ -87,6 +95,6 @@
     </section>
   </main>
 
-  <script src="/js/admin.js?v=12"></script>
+  <script src="/js/admin.js?v=13"></script>
 </body>
 </html>

@@ -21,11 +21,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  const shownGroups = new Set();
+  const shownKeys = new Set();
+
   function appendImages(images) {
     images.forEach((img) => {
+      // skip already-shown keys (dedup across pagination)
+      if (shownKeys.has(img.key)) return;
+
+      // if this image belongs to a group already displayed, skip it (group card shown once)
+      if (img.group && shownGroups.has(img.group)) return;
+
       const a = document.createElement('a');
       a.className = 'item';
       a.href = `/image.html?key=${encodeURIComponent(img.key)}`;
+
       const thumb = document.createElement('img');
       thumb.className = 'thumb';
       thumb.loading = 'lazy';
@@ -33,16 +43,25 @@ document.addEventListener('DOMContentLoaded', () => {
       thumb.src = `/img/${encodeURIComponent(img.key)}`;
       thumb.onerror = () => { thumb.style.visibility = 'hidden'; };
       thumb.alt = img.name || img.key;
+
       const name = document.createElement('div');
       name.className = 'name';
-      name.textContent = img.name || img.key;
+      name.textContent = img.group ? `${img.name || img.key}` : (img.name || img.key);
+
       const meta = document.createElement('div');
       meta.className = 'item-meta';
       meta.textContent = (img.uploader === 'admin') ? '管理员' : (img.uploader || '用户');
+      if (img.group) {
+        meta.textContent += ' · 合集';
+      }
+
       a.appendChild(thumb);
       a.appendChild(name);
       a.appendChild(meta);
       gallery.appendChild(a);
+
+      shownKeys.add(img.key);
+      if (img.group) shownGroups.add(img.group);
     });
   }
 
@@ -92,6 +111,8 @@ document.addEventListener('DOMContentLoaded', () => {
       done = false;
       total = Infinity;
       gallery.innerHTML = '';
+      shownKeys.clear();
+      shownGroups.clear();
       loadMore();
     }, 300);
   }
@@ -138,33 +159,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
   uploadSubmit.addEventListener('click', async () => {
     if (uploading) return; // block while an upload is in progress
-    const file = uploadFile.files && uploadFile.files[0];
-    if (!file) { showUploadMsg('请先选择图片', 'err'); return; }
+    const files = Array.from(uploadFile.files || []);
+    if (files.length === 0) { showUploadMsg('请先选择图片', 'err'); return; }
+
+    const mode = document.querySelector('input[name="upload-mode"]:checked').value;
+    // one group id shared by all files when merging
+    const group = mode === 'merge' ? `g${Date.now()}${Math.random().toString(36).slice(2, 8)}` : '';
 
     uploading = true;
     uploadSubmit.disabled = true;
     uploadSubmit.textContent = '上传中…';
-    showUploadMsg('上传中…', '');
 
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('uploader', uploadNick.value || '');
-
-    try {
-      const res = await fetch('/api/user/upload', { method: 'POST', body: fd });
-      const data = await res.json();
-      if (res.ok) {
-        showUploadMsg('上传成功，等待管理员审核。', 'ok');
-        uploadFile.value = '';
-      } else {
-        showUploadMsg(data.error || '上传失败', 'err');
+    let ok = 0, fail = 0;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      showUploadMsg(`正在上传 ${i + 1}/${files.length}：${file.name}`, '');
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('uploader', uploadNick.value || '');
+      if (group) fd.append('group', group);
+      try {
+        const res = await fetch('/api/user/upload', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (res.ok) ok++;
+        else {
+          fail++;
+          showUploadMsg(`${file.name} 失败：${data.error || '未知错误'}`, 'err');
+        }
+      } catch (e) {
+        fail++;
+        showUploadMsg(`${file.name} 失败：网络错误`, 'err');
       }
-    } catch (e) {
-      showUploadMsg('网络错误', 'err');
-    } finally {
-      uploading = false;
-      uploadSubmit.disabled = false;
-      uploadSubmit.textContent = '提交审核';
+    }
+
+    uploading = false;
+    uploadSubmit.disabled = false;
+    uploadSubmit.textContent = '提交审核';
+    if (fail === 0) {
+      showUploadMsg(`上传成功 ${ok} 张，等待管理员审核。`, 'ok');
+      uploadFile.value = '';
+    } else {
+      showUploadMsg(`完成：成功 ${ok} 张，失败 ${fail} 张`, fail > 0 ? 'err' : 'ok');
     }
   });
 

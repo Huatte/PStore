@@ -37,6 +37,7 @@ async function handle(context) {
   }
 
   const uploader = String(form.get('uploader') || '用户').trim().slice(0, 30);
+  const group = String(form.get('group') || '').trim().slice(0, 40) || undefined;
 
   const arrayBuffer = await file.arrayBuffer();
   const bytes = new Uint8Array(arrayBuffer);
@@ -75,6 +76,7 @@ async function handle(context) {
     addedAt: ts,
     status: 'pending',
   };
+  if (group) record.group = group;
   const idx = pendings.findIndex((p) => p.key === key);
   if (idx >= 0) pendings[idx] = { ...pendings[idx], addedAt: ts, uploader };
   else pendings.push(record);

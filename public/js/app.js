@@ -16,7 +16,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       const thumb = document.createElement('img');
       thumb.className = 'thumb';
       thumb.loading = 'lazy';
-      thumb.src = img.url;
+      thumb.src = `/img/${encodeURIComponent(img.key)}`;
+      thumb.onerror = () => { thumb.src = ''; thumb.alt = '图片加载失败'; };
       thumb.alt = img.name || img.key;
       const name = document.createElement('div');
       name.className = 'name';

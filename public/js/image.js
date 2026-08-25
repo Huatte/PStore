@@ -6,7 +6,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  const bigImg = document.getElementById('big-img');
+  const detailImgs = document.getElementById('detail-imgs');
+  const groupTitle = document.getElementById('group-title');
   const meta = document.getElementById('meta');
   const listEl = document.getElementById('comment-list');
   const form = document.getElementById('comment-form');
@@ -19,20 +20,52 @@ document.addEventListener('DOMContentLoaded', async () => {
     imageInfo = data.image || null;
   } catch (e) {}
 
-  bigImg.src = `/img/${encodeURIComponent(key)}`;
-  bigImg.onerror = () => {
-    bigImg.style.display = 'none';
-    meta.innerHTML = '<div style="color:#ff5c7a">图片加载失败：文件可能已被删除</div>';
-  };
-
-  if (imageInfo) {
-    bigImg.alt = imageInfo.name || key;
-    meta.innerHTML = `
-      <div>文件名：${escapeHtml(imageInfo.name || key)}</div>
-      <div>大小：${formatBytes(imageInfo.size)} · 上传于：${new Date(imageInfo.addedAt).toLocaleString()}</div>`;
+  // Determine the set of images to show (single or whole group)
+  let images = [];
+  if (imageInfo && imageInfo.group) {
+    try {
+      const res = await fetch(`/api/images?group=${encodeURIComponent(imageInfo.group)}`);
+      const data = await res.json();
+      images = (data.images || []).sort((a, b) => b.addedAt - a.addedAt);
+    } catch (e) { images = [imageInfo]; }
   } else {
-    bigImg.alt = key;
-    meta.textContent = `图片标识：${key}`;
+    images = imageInfo ? [imageInfo] : [];
+  }
+
+  if (images.length > 1) {
+    groupTitle.textContent = `共 ${images.length} 张（合并详情页）`;
+    groupTitle.style.display = 'block';
+  }
+
+  // Render each image with a wrapper so aspect ratio is preserved (no shrink)
+  if (images.length === 0) {
+    meta.innerHTML = '<div style="color:#ff5c7a">图片加载失败：文件可能已被删除</div>';
+    return;
+  }
+  detailImgs.innerHTML = '';
+  images.forEach((img) => {
+    const fig = document.createElement('figure');
+    fig.className = 'detail-figure';
+    const cap = document.createElement('figcaption');
+    cap.textContent = img.name || img.key;
+    const im = document.createElement('img');
+    im.className = 'detail-image';
+    im.loading = 'lazy';
+    im.decoding = 'async';
+    im.src = `/img/${encodeURIComponent(img.key)}`;
+    im.alt = img.name || img.key;
+    im.onerror = () => { im.style.display = 'none'; cap.textContent = `${cap.textContent}（加载失败）`; };
+    fig.appendChild(im);
+    fig.appendChild(cap);
+    detailImgs.appendChild(fig);
+  });
+
+  // Metadata (from first/primary image)
+  const primary = imageInfo || images[0];
+  if (primary) {
+    meta.innerHTML = `
+      <div>上传者：${escapeHtml(primary.uploader === 'admin' ? '管理员' : (primary.uploader || '用户'))}</div>
+      <div>${escapeHtml(primary.name || primary.key)} · ${formatBytes(primary.size)} · 上传于：${new Date(primary.addedAt).toLocaleString()}</div>`;
   }
 
   async function loadComments() {

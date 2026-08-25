@@ -4,14 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PStore</title>
-  <link rel="stylesheet" href="/css/style.css?v=21" />
+  <link rel="stylesheet" href="/css/style.css?v=23" />
 </head>
 <body>
   <header class="site-header">
     <div class="wrap">
       <span class="brand">PStore</span>
       <span class="header-actions">
-        <button id="upload-open" class="upload-link">上传</button>
+        <a class="upload-link" href="/upload">上传</a>
         <a class="admin-link" href="/nb">管理</a>
       </span>
     </div>
@@ -25,29 +25,6 @@
     </div>
   </main>
 
-  <!-- user upload modal -->
-  <div id="upload-modal" class="modal-overlay hidden">
-    <div class="modal">
-      <div class="modal-head">
-        <h3>上传图片</h3>
-        <button id="upload-close" class="modal-close">×</button>
-      </div>
-      <div class="modal-body">
-        <input id="upload-file" type="file" accept="image/*" multiple />
-        <input id="upload-nickname" type="text" placeholder="昵称（必填，最长30字）" maxlength="30" required />
-        <div class="upload-mode">
-          <label><input type="radio" name="upload-mode" value="separate" checked /> 每张单独详情页</label>
-          <label><input type="radio" name="upload-mode" value="merge" /> 合并到同一详情页</label>
-        </div>
-        <button id="upload-submit">提交审核</button>
-        <button id="retry-failed" class="btn-retry hidden" style="display:none">重试失败的上传</button>
-        <div id="upload-msg" class="msg"></div>
-        <div id="upload-list" class="upload-list"></div>
-        <div class="hint">支持一次选多张。选择"合并到同一详情页"后，多张图会在一个页面里依次展示。上传后需管理员审核。支持 png/jpg/gif/webp/bmp/avif，最大 40MB。</div>
-      </div>
-    </div>
-  </div>
-
-  <script src="/js/app.js?v=21"></script>
+  <script src="/js/app.js?v=23"></script>
 </body>
 </html>

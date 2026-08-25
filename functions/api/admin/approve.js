@@ -80,6 +80,26 @@ export async function onRequestPost(context) {
         if (m && m.sha) isha = m.sha;
       } catch (_) {}
       await writeJson(env, 'data/images.json', imageList, `approve batch (${okCount})`, isha);
+
+      // Register any new groups introduced by the approved images
+      const groups = await readJson(env, 'data/groups.json', []);
+      const groupList = Array.isArray(groups) ? groups : [];
+      let changed = false;
+      for (const key of keys) {
+        const target = pendingList.find((p) => p.key === key);
+        if (target && target.group && !groupList.find((gr) => gr.id === target.group)) {
+          groupList.push({ id: target.group, name: target.group, createdAt: Date.now() });
+          changed = true;
+        }
+      }
+      if (changed) {
+        let gsha = null;
+        try {
+          const gm = await g.getContents('data/groups.json');
+          if (gm && gm.sha) gsha = gm.sha;
+        } catch (_) {}
+        await writeJson(env, 'data/groups.json', groupList, `register groups on approve`, gsha);
+      }
     }
 
     // Write pending_images.json once (drop the processed keys)

@@ -56,11 +56,17 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // --- upload ---
+  let uploading = false;
   uploadBtn.addEventListener('click', async () => {
+    if (uploading) return; // block re-entry while an upload is in progress
     const files = Array.from(fileInput.files || []);
     if (files.length === 0) { uploadProgress.textContent = '请选择图片'; uploadProgress.className = 'msg err'; return; }
-    uploadResults.innerHTML = '';
+
+    uploading = true;
     uploadBtn.disabled = true;
+    const originalText = uploadBtn.textContent;
+    uploadBtn.textContent = '上传中…';
+    uploadResults.innerHTML = '';
     const t = token();
     for (const file of files) {
       const fd = new FormData();
@@ -84,11 +90,14 @@ document.addEventListener('DOMContentLoaded', () => {
         li.textContent = `${file.name} — 网络错误`;
         uploadResults.appendChild(li);
       }
-      fileInput.value = '';
     }
+    // clear file input only after all uploads finish
+    fileInput.value = '';
     uploadBtn.disabled = false;
+    uploadBtn.textContent = originalText;
     uploadProgress.textContent = '上传完成';
     uploadProgress.className = 'msg ok';
+    uploading = false;
     await loadManage();
     reloadGalleryCache();
   });

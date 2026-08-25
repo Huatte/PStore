@@ -154,6 +154,10 @@ body {
 .comment .c-head { display: flex; gap: 10px; font-size: 13px; color: var(--muted); margin-bottom: 5px; align-items: center; }
 .comment .c-author { color: var(--accent); font-weight: 700; }
 .comment .c-text { font-size: 14px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+.comment .c-id {
+  margin-top: 6px; text-align: right; font-size: 11px; color: var(--muted);
+  word-break: break-all; user-select: text;
+}
 .comment .actions { margin-top: 8px; display: flex; gap: 8px; }
 .comment .actions button { font-size: 12px; padding: 4px 12px; border: none; border-radius: 6px; cursor: pointer; color: #fff; }
 .btn-approve { background: var(--ok); }
@@ -202,6 +206,15 @@ button:hover { filter: brightness(1.08); }
 }
 .btn-delete-img { background: var(--danger); color: #fff; border: none; border-radius: 6px; cursor: pointer; }
 .btn-delete-img:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Pager */
+.pager { display: flex; align-items: center; gap: 12px; margin-top: 14px; justify-content: center; }
+.btn-pager {
+  background: var(--card2); color: var(--text); border: 1px solid #333a5c;
+  padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 13px;
+}
+.btn-pager:disabled { opacity: 0.4; cursor: not-allowed; }
+.pager-info { font-size: 13px; color: var(--muted); }
 
 /* Bulk selection */
 .bulk-bar {

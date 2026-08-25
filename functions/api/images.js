@@ -1,4 +1,4 @@
-import { readJson, json } from '../_lib/github.js';
+import { readJson, json, imgGroups, imgInGroup } from '../_lib/github.js';
 
 const DEFAULT_LIMIT = 30;
 const MAX_LIMIT = 100;
@@ -27,7 +27,7 @@ export async function onRequestGet(context) {
   // Lookup all images in a group (used by detail page for grouped uploads)
   const group = url.searchParams.get('group');
   if (group) {
-    const list = images.filter((i) => i.group === group).sort((a, b) => b.addedAt - a.addedAt);
+    const list = images.filter((i) => imgInGroup(i, group)).sort((a, b) => b.addedAt - a.addedAt);
     return json({ images: list, total: list.length });
   }
 
@@ -48,9 +48,12 @@ export async function onRequestGet(context) {
     const byGroup = new Map();
     const standalone = [];
     for (const img of images) {
-      if (img.group) {
-        const cur = byGroup.get(img.group);
-        if (!cur || (img.addedAt || 0) > (cur.addedAt || 0)) byGroup.set(img.group, img);
+      const gs = imgGroups(img);
+      if (gs.length > 0) {
+        // an image in multiple groups is represented by its first group card
+        const gid = gs[0];
+        const cur = byGroup.get(gid);
+        if (!cur || (img.addedAt || 0) > (cur.addedAt || 0)) byGroup.set(gid, img);
       } else {
         standalone.push(img);
       }
@@ -58,7 +61,8 @@ export async function onRequestGet(context) {
     // For each group representative, override name with the group name (if known)
     const groupCards = [];
     for (const img of byGroup.values()) {
-      const groupName = groupNameMap.get(img.group);
+      const gid = imgGroups(img)[0];
+      const groupName = groupNameMap.get(gid);
       groupCards.push({ ...img, name: groupName || img.name, groupName: groupName || '' });
     }
     working = [...groupCards, ...standalone];

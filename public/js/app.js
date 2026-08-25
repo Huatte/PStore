@@ -39,6 +39,48 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   searchBox.addEventListener('input', render);
 
+  // --- user upload modal ---
+  const modal = document.getElementById('upload-modal');
+  const openBtn = document.getElementById('upload-open');
+  const closeBtn = document.getElementById('upload-close');
+  const uploadFile = document.getElementById('upload-file');
+  const uploadNick = document.getElementById('upload-nickname');
+  const uploadSubmit = document.getElementById('upload-submit');
+  const uploadMsg = document.getElementById('upload-msg');
+
+  function showMsg(text, cls) {
+    uploadMsg.textContent = text;
+    uploadMsg.className = `msg ${cls}`;
+  }
+
+  openBtn.addEventListener('click', () => modal.classList.remove('hidden'));
+  closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.add('hidden'); });
+
+  uploadSubmit.addEventListener('click', async () => {
+    const file = uploadFile.files && uploadFile.files[0];
+    if (!file) { showMsg('请先选择图片', 'err'); return; }
+    showMsg('上传中…', '');
+    uploadSubmit.disabled = true;
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('uploader', uploadNick.value || '');
+    try {
+      const res = await fetch('/api/user/upload', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (res.ok) {
+        showMsg('上传成功，等待管理员审核。', 'ok');
+        uploadFile.value = '';
+      } else {
+        showMsg(data.error || '上传失败', 'err');
+      }
+    } catch (e) {
+      showMsg('网络错误', 'err');
+    } finally {
+      uploadSubmit.disabled = false;
+    }
+  });
+
   try {
     const res = await fetch('/api/images');
     const data = await res.json();

@@ -83,7 +83,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         div.className = 'comment';
         div.innerHTML = `
           <div class="c-head"><span class="c-author">${escapeHtml(c.author)}</span><span>${new Date(c.createdAt).toLocaleString()}</span></div>
-          <div class="c-text">${escapeHtml(c.text)}</div>`;
+          <div class="c-text">${escapeHtml(c.text)}</div>
+          <div class="c-id">ID:${escapeHtml(c.id)}</div>`;
         listEl.appendChild(div);
       });
     } catch (e) {
@@ -108,7 +109,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       const data = await res.json();
       if (res.ok) {
         document.getElementById('c-text').value = '';
-        showMsg(form, '提交成功，等待管理员审核。', 'ok');
+        showMsg(form, '留言发表成功。', 'ok');
+        loadComments();
       } else {
         showMsg(form, data.error || '提交失败', 'err');
       }

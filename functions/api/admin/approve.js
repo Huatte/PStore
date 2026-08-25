@@ -1,4 +1,4 @@
-import { gh, readJson, writeJson, json } from '../../_lib/github.js';
+import { gh, readJson, writeJson, json, imgGroups } from '../../_lib/github.js';
 
 export async function onRequestPost(context) {
   const { env, request } = context;
@@ -52,7 +52,8 @@ export async function onRequestPost(context) {
           uploader: target.uploader || '',
           addedAt: Date.now(),
         };
-        if (target.group) record.group = target.group;
+        const gs = imgGroups(target);
+        if (gs.length > 0) record.groups = gs;
         const idx = imageList.findIndex((i) => i.key === key);
         if (idx >= 0) imageList[idx] = { ...imageList[idx], addedAt: record.addedAt };
         else imageList.push(record);
@@ -87,9 +88,12 @@ export async function onRequestPost(context) {
       let changed = false;
       for (const key of keys) {
         const target = pendingList.find((p) => p.key === key);
-        if (target && target.group && !groupList.find((gr) => gr.id === target.group)) {
-          groupList.push({ id: target.group, name: target.group, createdAt: Date.now() });
-          changed = true;
+        if (!target) continue;
+        for (const gid of imgGroups(target)) {
+          if (!groupList.find((gr) => gr.id === gid)) {
+            groupList.push({ id: gid, name: gid, createdAt: Date.now() });
+            changed = true;
+          }
         }
       }
       if (changed) {

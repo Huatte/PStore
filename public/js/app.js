@@ -71,7 +71,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (offset === 0) {
       // clear the static placeholder from index.html before first render
       gallery.innerHTML = '';
-      setStatus(q ? '搜索中…' : '加载中…');
     }
     try {
       const params = new URLSearchParams({ limit: String(PAGE), offset: String(offset) });
@@ -87,9 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (offset === 0 && items.length === 0) {
         setStatus(q ? '没有匹配的图片' : '暂无图片');
-      } else if (!done) {
-        setStatus('加载中…');
-      } else {
+      } else if (done) {
         setStatus('');
       }
     } catch (e) {

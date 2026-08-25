@@ -199,17 +199,31 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Toggle the group-name field when switching admin upload mode
+  document.querySelectorAll('input[name="admin-upload-mode"]').forEach((r) => {
+    r.addEventListener('change', () => {
+      const isMerge = document.querySelector('input[name="admin-upload-mode"]:checked').value === 'merge';
+      const gn = document.getElementById('admin-upload-group-name');
+      if (gn) gn.style.display = isMerge ? 'block' : 'none';
+    });
+  });
+
   uploadBtn.addEventListener('click', async () => {
     if (uploading) return; // block re-entry while an upload is in progress
     const files = Array.from(fileInput.files || []);
     if (files.length === 0) { uploadProgress.textContent = '请选择图片'; uploadProgress.className = 'msg err'; return; }
 
     const mode = document.querySelector('input[name="admin-upload-mode"]:checked').value;
-    const group = mode === 'merge' ? `g${Date.now()}${Math.random().toString(36).slice(2, 8)}` : '';
+    let groupName = '';
+    if (mode === 'merge') {
+      const gn = document.getElementById('admin-upload-group-name');
+      groupName = gn.value.trim();
+      if (!groupName) { uploadProgress.textContent = '请填写合集名称'; uploadProgress.className = 'msg err'; gn.focus(); return; }
+    }
 
     const uploads = files.map((file) => {
       const extra = {};
-      if (group) extra.group = group;
+      if (groupName) extra.groupName = groupName;
       return { file, extra };
     });
 

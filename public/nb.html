@@ -27,6 +27,7 @@
     <section id="panel-view" class="hidden">
       <nav class="tabs">
         <button class="tab active" data-tab="upload">上传图片</button>
+        <button class="tab" data-tab="image-review">图片审核</button>
         <button class="tab" data-tab="moderate">留言审核</button>
         <button class="tab" data-tab="manage">管理图片</button>
         <button id="logout-btn" class="logout">退出</button>
@@ -40,6 +41,14 @@
           <button id="upload-btn">上传</button>
           <div id="upload-progress" class="msg"></div>
           <ul id="upload-results"></ul>
+        </div>
+      </div>
+
+      <!-- image review tab -->
+      <div class="tab-panel hidden" id="tab-image-review">
+        <div class="card">
+          <h3>图片审核 <span id="image-pending-count" class="badge"></span></h3>
+          <div id="image-review-list" class="comment-list"></div>
         </div>
       </div>
 

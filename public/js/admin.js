@@ -265,7 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const div = document.createElement('div');
       div.className = 'manage-item';
       div.innerHTML = `
-        <img class="thumb" src="/thumb/${encodeURIComponent(img.key)}" alt="" onerror="this.style.visibility='hidden'" />
+        <img class="thumb" src="/img/${encodeURIComponent(img.key)}" alt="" onerror="this.style.visibility='hidden'" />
         <div class="row">
           <a href="/img/${encodeURIComponent(img.key)}" target="_blank" download="${escapeHtml(img.name || img.key)}">下载</a>
           <button class="btn-delete-img" data-key="${escapeHtml(img.key)}">删除</button>

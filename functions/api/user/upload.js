@@ -36,7 +36,10 @@ async function handle(context) {
     return json({ error: 'file too large (max 40MB)' }, 413);
   }
 
-  const uploader = String(form.get('uploader') || '用户').trim().slice(0, 30);
+  const uploader = String(form.get('uploader') || '').trim().slice(0, 30);
+  if (!uploader) {
+    return json({ error: '昵称不能为空' }, 400);
+  }
   const group = String(form.get('group') || '').trim().slice(0, 40) || undefined;
 
   const arrayBuffer = await file.arrayBuffer();

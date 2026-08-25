@@ -58,6 +58,13 @@ body {
   align-items: flex-start;
 }
 .review-thumb { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; background: var(--card); }
+.review-thumb-link { display: block; cursor: pointer; }
+.review-thumb-link:hover .review-thumb { opacity: 0.85; }
+.btn-view {
+  display: inline-block; background: var(--accent); color: #fff; text-decoration: none;
+  font-size: 12px; padding: 6px 16px; border-radius: 6px; cursor: pointer;
+}
+.btn-view:hover { filter: brightness(1.08); }
 .review-info { flex: 1; min-width: 0; }
 .review-info .actions { margin-top: 10px; display: flex; gap: 8px; }
 .review-info .actions button { font-size: 12px; padding: 6px 16px; border: none; border-radius: 6px; cursor: pointer; color: #fff; }

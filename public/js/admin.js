@@ -12,7 +12,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const uploadResults = document.getElementById('upload-results');
 
   const moderateList = document.getElementById('moderate-list');
-  const pendingCount = document.getElementById('pending-count');
+  const moderateSearch = document.getElementById('moderate-search');
+  const moderatePrev = document.getElementById('moderate-prev');
+  const moderateNext = document.getElementById('moderate-next');
+  const moderateInfo = document.getElementById('moderate-info');
   const manageList = document.getElementById('manage-list');
   const imageReviewList = document.getElementById('image-review-list');
   const imagePendingCount = document.getElementById('image-pending-count');
@@ -171,44 +174,66 @@ document.addEventListener('DOMContentLoaded', () => {
     reloadGalleryCache();
   });
 
-  // --- moderate ---
+  // --- moderate (comment management) ---
+  const MODERATE_PAGE = 20;
+  let modOffset = 0;
+  let modTotal = 0;
+
   async function loadModerate() {
     const t = token();
     try {
-      const res = await fetch('/api/admin/comments', { headers: { 'x-admin-token': t } });
+      const q = (moderateSearch.value || '').trim();
+      const params = new URLSearchParams({ limit: String(MODERATE_PAGE), offset: String(modOffset) });
+      if (q) params.set('q', q);
+      const res = await fetch(`/api/admin/comments?${params.toString()}`, { headers: { 'x-admin-token': t } });
       if (!res.ok) throw new Error();
       const data = await res.json();
-      const list = data.comments || [];
-      renderModerate(list);
+      modTotal = data.total || 0;
+      renderModerate(data.comments || []);
+      moderateInfo.textContent = modTotal === 0 ? '0 条留言' : `第 ${modOffset + 1}-${Math.min(modOffset + MODERATE_PAGE, modTotal)} 条 / 共 ${modTotal} 条`;
+      moderatePrev.disabled = modOffset <= 0;
+      moderateNext.disabled = modOffset + MODERATE_PAGE >= modTotal;
     } catch (e) { moderateList.innerHTML = '<div class="empty-list">加载失败</div>'; }
   }
 
   function renderModerate(list) {
-    const pending = list.filter((c) => c.status === 'pending');
-    pendingCount.textContent = pending.length;
-    if (pending.length === 0) {
-      moderateList.innerHTML = '<div class="empty-list">暂无待审核留言</div>';
+    if (list.length === 0) {
+      moderateList.innerHTML = '<div class="empty-list">没有留言</div>';
       return;
     }
     moderateList.innerHTML = '';
-    pending.forEach((c) => {
+    list.forEach((c) => {
       const div = document.createElement('div');
       div.className = 'comment';
+      const statusMap = {
+        visible: '<span class="c-status status-approved">显示中</span>',
+        hidden: '<span class="c-status status-rejected">已隐藏</span>',
+        deleted: '<span class="c-status status-rejected">已删除</span>',
+      };
       div.innerHTML = `
         <div class="c-head">
           <span class="c-author">${escapeHtml(c.author)}</span>
-          <span class="c-status status-pending">待审核</span>
+          ${statusMap[c.status] || ''}
           <span>${new Date(c.createdAt).toLocaleString()}</span>
         </div>
         <div class="c-text">${escapeHtml(c.text)}</div>
+        <div class="c-id">ID:${escapeHtml(c.id)}</div>
         <div class="hint" style="margin-top:4px">图片：${escapeHtml(c.image)}</div>
         <div class="actions">
-          <button class="btn-approve" data-action="approve" data-id="${c.id}" data-image="${escapeHtml(c.image)}">通过</button>
-          <button class="btn-reject" data-action="reject" data-id="${c.id}" data-image="${escapeHtml(c.image)}">拒绝</button>
+          <button class="btn-reject" data-action="hide" data-id="${c.id}" data-image="${escapeHtml(c.image)}">隐藏</button>
+          <button class="btn-approve" data-action="show" data-id="${c.id}" data-image="${escapeHtml(c.image)}">显示</button>
+          <button class="btn-bulk-bad" data-action="delete" data-id="${c.id}" data-image="${escapeHtml(c.image)}">删除</button>
         </div>`;
       moderateList.appendChild(div);
     });
   }
+
+  moderateSearch.addEventListener('input', () => {
+    clearTimeout(moderateSearch._t);
+    moderateSearch._t = setTimeout(() => { modOffset = 0; loadModerate(); }, 300);
+  });
+  moderatePrev.addEventListener('click', () => { if (modOffset > 0) { modOffset -= MODERATE_PAGE; loadModerate(); } });
+  moderateNext.addEventListener('click', () => { if (modOffset + MODERATE_PAGE < modTotal) { modOffset += MODERATE_PAGE; loadModerate(); } });
 
   moderateList.addEventListener('click', async (e) => {
     const btn = e.target.closest('button[data-action]');
@@ -216,6 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const action = btn.dataset.action;
     const id = btn.dataset.id;
     const image = btn.dataset.image;
+    if (action === 'delete' && !confirm('确定删除这条留言吗？')) return;
     btn.disabled = true;
     try {
       const res = await fetch('/api/admin/comment', {

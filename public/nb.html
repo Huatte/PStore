@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>管理�?· PStore</title>
-  <link rel="stylesheet" href="/css/style.css?v=4" />
+  <title>管理员 · PStore</title>
+  <link rel="stylesheet" href="/css/style.css?v=5" />
 </head>
 <body>
   <header class="site-header">
@@ -17,7 +17,7 @@
   <main class="wrap">
     <!-- login gate -->
     <section id="login-view" class="card">
-      <h2>管理员登�?/h2>
+      <h2>管理员登录</h2>
       <input id="admin-pass" type="password" placeholder="管理密码" />
       <button id="login-btn">登录</button>
       <div id="login-msg" class="msg"></div>
@@ -30,7 +30,7 @@
         <button class="tab" data-tab="image-review">图片审核</button>
         <button class="tab" data-tab="moderate">留言审核</button>
         <button class="tab" data-tab="manage">管理图片</button>
-        <button id="logout-btn" class="logout">退�?/button>
+        <button id="logout-btn" class="logout">退出</button>
       </nav>
 
       <!-- upload tab -->
@@ -64,12 +64,15 @@
       <div class="tab-panel hidden" id="tab-manage">
         <div class="card">
           <h3>图片管理</h3>
+          <div class="search-bar">
+            <input id="manage-search" type="text" placeholder="搜索图片名称…" autocomplete="off" />
+          </div>
           <div id="manage-list" class="gallery small"></div>
         </div>
       </div>
     </section>
   </main>
 
-  <script src="/js/admin.js?v=4"></script>
+  <script src="/js/admin.js?v=5"></script>
 </body>
 </html>

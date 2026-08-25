@@ -102,7 +102,7 @@ async function handle(context) {
       addedAt: ts,
       status: 'pending',
     };
-    if (groupId) rec.group = groupId;
+    if (groupId) rec.groups = [groupId];
     const idx = pendings.findIndex((p) => p.key === key);
     if (idx >= 0) pendings[idx] = { ...pendings[idx], addedAt: ts, uploader };
     else pendings.push(rec);

@@ -16,8 +16,8 @@ export async function onRequestPost(context) {
 
   const image = String(body.image || '');
   const id = String(body.id || '');
-  const action = body.action; // 'approve' | 'reject'
-  if (!image || !id || !['approve', 'reject'].includes(action)) {
+  const action = body.action; // 'delete' | 'hide' | 'show'
+  if (!image || !id || !['delete', 'hide', 'show'].includes(action)) {
     return json({ error: 'invalid request' }, 400);
   }
 
@@ -26,7 +26,13 @@ export async function onRequestPost(context) {
   const target = list.find((c) => c.id === id);
   if (!target) return json({ error: 'comment not found' }, 404);
 
-  target.status = action === 'approve' ? 'approved' : 'rejected';
+  if (action === 'delete') {
+    target.status = 'deleted';
+  } else if (action === 'hide') {
+    target.status = 'hidden';
+  } else if (action === 'show') {
+    target.status = 'visible';
+  }
   comments[image] = list;
 
   let sha = null;

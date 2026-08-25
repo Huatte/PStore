@@ -14,9 +14,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Load image metadata
   let imageInfo = null;
   try {
-    const res = await fetch('/api/images');
+    const res = await fetch(`/api/images?key=${encodeURIComponent(key)}`);
     const data = await res.json();
-    imageInfo = (data.images || []).find((i) => i.key === key);
+    imageInfo = data.image || null;
   } catch (e) {}
 
   bigImg.src = `/img/${encodeURIComponent(key)}`;

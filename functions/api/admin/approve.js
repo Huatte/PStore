@@ -3,6 +3,7 @@ import {
   readJson,
   writeJson,
   rawFileBase64,
+  generateAndStoreThumb,
   json,
 } from '../../_lib/github.js';
 
@@ -46,6 +47,9 @@ export async function onRequestPost(context) {
       await g.putFile(destPath, b64, `approve image ${key}`);
     }
     await g.deleteFile(pendingPath, `remove pending ${key}`, pendingMeta.sha);
+
+    // Generate thumbnail for the newly approved image (best effort)
+    generateAndStoreThumb(env, key, destPath).catch(() => null);
 
     // Add to images.json index
     const images = await readJson(env, 'data/images.json', []);

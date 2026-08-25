@@ -653,6 +653,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  const GROUP_PREVIEW_COUNT = 12;
+
   async function loadGroupMembers(id, container) {
     try {
       const res = await fetch(`/api/images?group=${encodeURIComponent(id)}`);
@@ -662,18 +664,33 @@ document.addEventListener('DOMContentLoaded', () => {
         container.innerHTML = '<div class="empty-list">该合集暂无图片</div>';
         return;
       }
-      container.innerHTML = '';
-      members.forEach((img) => {
-        const item = document.createElement('div');
-        item.className = 'group-member';
-        item.innerHTML = `
-          <img class="gm-thumb" src="/img/${encodeURIComponent(img.key)}" alt="" onerror="this.style.visibility='hidden'" />
-          <span class="gm-name">${escapeHtml(img.name || img.key)}</span>
-          <button class="btn-remove-group-img" data-id="${escapeHtml(id)}" data-key="${escapeHtml(img.key)}">移除</button>`;
-        container.appendChild(item);
-      });
+      container.dataset.members = JSON.stringify(members.map((m) => ({ key: m.key, name: m.name || m.key })));
+      container.dataset.gid = id;
+      renderGroupMembers(container, members, false);
     } catch (e) {
       container.innerHTML = '<div class="empty-list">加载失败</div>';
+    }
+  }
+
+  function renderGroupMembers(container, members, expanded) {
+    const id = container.dataset.gid;
+    container.innerHTML = '';
+    const shown = expanded ? members : members.slice(0, GROUP_PREVIEW_COUNT);
+    shown.forEach((img) => {
+      const item = document.createElement('div');
+      item.className = 'group-member';
+      item.innerHTML = `
+        <img class="gm-thumb" src="/img/${encodeURIComponent(img.key)}" alt="" onerror="this.style.visibility='hidden'" />
+        <span class="gm-name">${escapeHtml(img.name || img.key)}</span>
+        <button class="btn-remove-group-img" data-id="${escapeHtml(id)}" data-key="${escapeHtml(img.key)}">移除</button>`;
+      container.appendChild(item);
+    });
+    if (members.length > GROUP_PREVIEW_COUNT) {
+      const toggle = document.createElement('button');
+      toggle.className = 'btn-group-toggle';
+      toggle.textContent = expanded ? `折叠（显示前 ${GROUP_PREVIEW_COUNT} 张）` : `展开全部（共 ${members.length} 张）`;
+      toggle.addEventListener('click', () => renderGroupMembers(container, members, !expanded));
+      container.appendChild(toggle);
     }
   }
 
@@ -763,40 +780,40 @@ document.addEventListener('DOMContentLoaded', () => {
   const pickerCount = document.getElementById('group-picker-count');
   let pickerGroupId = null;
   let pickerAllImages = [];
+  let pickerLoading = false;
   const pickerSelected = new Set();
+
+  // Load images for the picker. If a search term is provided, query the backend
+  // (which matches by name); otherwise load the first page only.
+  async function pickerLoad(q) {
+    if (pickerLoading) return;
+    pickerLoading = true;
+    pickerGrid.innerHTML = '<div class="empty-list">加载中…</div>';
+    try {
+      const params = new URLSearchParams({ dedup: '0', limit: '100', offset: '0' });
+      if (q) params.set('q', q);
+      const res = await fetch(`/api/images?${params.toString()}`);
+      const data = await res.json();
+      pickerAllImages = data.images || [];
+      renderPicker();
+    } catch (e) {
+      pickerGrid.innerHTML = '<div class="empty-list">加载失败</div>';
+    } finally {
+      pickerLoading = false;
+    }
+  }
 
   async function openGroupPicker(groupId) {
     pickerGroupId = groupId;
     pickerSelected.clear();
     pickerSearch.value = '';
     pickerModal.classList.remove('hidden');
-    pickerGrid.innerHTML = '<div class="empty-list">加载中…</div>';
-    try {
-      // load all images (no group dedup)
-      const all = [];
-      let offset = 0;
-      const PAGE = 100;
-      while (true) {
-        const res = await fetch(`/api/images?dedup=0&limit=${PAGE}&offset=${offset}`);
-        const data = await res.json();
-        const items = data.images || [];
-        all.push(...items);
-        offset += items.length;
-        if (!data.total || offset >= data.total || items.length === 0) break;
-      }
-      pickerAllImages = all;
-      renderPicker();
-    } catch (e) {
-      pickerGrid.innerHTML = '<div class="empty-list">加载失败</div>';
-    }
+    pickerCount.textContent = '已选 0 张';
+    await pickerLoad('');
   }
 
   function renderPicker() {
-    const q = (pickerSearch.value || '').trim().toLowerCase();
-    const list = pickerAllImages.filter((img) => {
-      if (!q) return true;
-      return (img.name || '').toLowerCase().includes(q);
-    });
+    const list = pickerAllImages;
     pickerGrid.innerHTML = '';
     if (list.length === 0) {
       pickerGrid.innerHTML = '<div class="empty-list">没有匹配的图片</div>';
@@ -819,7 +836,11 @@ document.addEventListener('DOMContentLoaded', () => {
     pickerCount.textContent = `已选 ${pickerSelected.size} 张`;
   }
 
-  pickerSearch.addEventListener('input', renderPicker);
+  let pickerDebounce = null;
+  pickerSearch.addEventListener('input', () => {
+    clearTimeout(pickerDebounce);
+    pickerDebounce = setTimeout(() => pickerLoad((pickerSearch.value || '').trim()), 300);
+  });
   pickerClose.addEventListener('click', () => pickerModal.classList.add('hidden'));
   pickerModal.addEventListener('click', (e) => { if (e.target === pickerModal) pickerModal.classList.add('hidden'); });
 

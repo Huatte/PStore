@@ -1728,35 +1728,5 @@
     "uploader": "locktest",
     "addedAt": 1787663419946,
     "status": "pending"
-  },
-  {
-    "key": "b255022fca3442c0229bbd7e.png",
-    "url": "/img/b255022fca3442c0229bbd7e.png",
-    "name": "spd1.png",
-    "size": 199,
-    "type": "image/png",
-    "uploader": "spdtest",
-    "addedAt": 1787663459868,
-    "status": "pending"
-  },
-  {
-    "key": "0cd69b47647719689feda241.png",
-    "url": "/img/0cd69b47647719689feda241.png",
-    "name": "spd2.png",
-    "size": 199,
-    "type": "image/png",
-    "uploader": "spdtest",
-    "addedAt": 1787663464021,
-    "status": "pending"
-  },
-  {
-    "key": "76e1d1a2f00b9a9fe6fa6e19.png",
-    "url": "/img/76e1d1a2f00b9a9fe6fa6e19.png",
-    "name": "spd3.png",
-    "size": 199,
-    "type": "image/png",
-    "uploader": "spdtest",
-    "addedAt": 1787663467393,
-    "status": "pending"
   }
 ]

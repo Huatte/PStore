@@ -43,6 +43,7 @@
             <label><input type="radio" name="admin-upload-mode" value="separate" checked /> 每张单独详情页</label>
             <label><input type="radio" name="admin-upload-mode" value="merge" /> 合并到同一详情页</label>
           </div>
+          <input id="admin-upload-group-name" type="text" placeholder="合集名称（合并模式必填）" maxlength="60" style="display:none" />
           <button id="upload-btn">上传</button>
           <button id="admin-retry-failed" class="btn-retry hidden" style="display:none">重试失败的上传</button>
           <div id="upload-progress" class="msg"></div>
@@ -108,6 +109,6 @@
     </section>
   </main>
 
-  <script src="/js/admin.js?v=27"></script>
+  <script src="/js/admin.js?v=28"></script>
 </body>
 </html>

@@ -252,6 +252,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (uploading) return; // block while an upload is in progress
     const files = Array.from(uploadFile.files || []);
     if (files.length === 0) { showUploadMsg('请先选择图片', 'err'); return; }
+    const nickname = uploadNick.value.trim();
+    if (!nickname) { showUploadMsg('请填写昵称', 'err'); uploadNick.focus(); return; }
 
     const mode = document.querySelector('input[name="upload-mode"]:checked').value;
     // one group id shared by all files when merging
@@ -267,7 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const file = files[i];
       showUploadMsg(`正在上传 ${i + 1}/${files.length}`, '');
       const ui = createUploadItem(file);
-      const extra = { uploader: uploadNick.value || '' };
+      const extra = { uploader: nickname };
       if (group) extra.group = group;
       try {
         const data = await uploadFileXhr(file, extra, ui);

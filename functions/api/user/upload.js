@@ -41,7 +41,10 @@ async function handle(context) {
   if (!uploader) {
     return json({ error: '昵称不能为空' }, 400);
   }
-  const group = String(form.get('group') || '').trim().slice(0, 40) || undefined;
+  // groupName: user enters a name for a merged album; we look up or create it.
+  // group (legacy): a pre-assigned group id.
+  const groupName = String(form.get('groupName') || '').trim().slice(0, 60) || undefined;
+  const group = groupName ? undefined : (String(form.get('group') || '').trim().slice(0, 40) || undefined);
 
   const arrayBuffer = await file.arrayBuffer();
   const bytes = new Uint8Array(arrayBuffer);
@@ -67,6 +70,28 @@ async function handle(context) {
   const record = await withLock('index:images', async () => {
     const pendings = await readJson(env, 'data/pending_images.json', []);
     const ts = Date.now();
+
+    // Resolve target group id: by name (create/reuse) or legacy id
+    let groupId = group;
+    if (groupName) {
+      const groups = await readJson(env, 'data/groups.json', []);
+      const groupList = Array.isArray(groups) ? groups : [];
+      const existing = groupList.find((gr) => gr.name === groupName);
+      if (existing) {
+        groupId = existing.id;
+      } else {
+        const gid = `g${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
+        groupList.push({ id: gid, name: groupName, createdAt: ts });
+        groupId = gid;
+        let gsha = null;
+        try {
+          const gm = await g.getContents('data/groups.json');
+          if (gm && gm.sha) gsha = gm.sha;
+        } catch (_) {}
+        await writeJson(env, 'data/groups.json', groupList, `create group ${groupName}`, gsha);
+      }
+    }
+
     const rec = {
       key,
       url: `/img/${key}`,
@@ -77,24 +102,23 @@ async function handle(context) {
       addedAt: ts,
       status: 'pending',
     };
-    if (group) rec.group = group;
+    if (groupId) rec.group = groupId;
     const idx = pendings.findIndex((p) => p.key === key);
     if (idx >= 0) pendings[idx] = { ...pendings[idx], addedAt: ts, uploader };
     else pendings.push(rec);
 
-    // If this image belongs to a group that isn't registered in groups.json yet,
-    // register it so it shows up in the admin 合集管理 panel.
-    if (group) {
+    // If using a legacy group id not registered yet, register it
+    if (groupId && !groupName) {
       const groups = await readJson(env, 'data/groups.json', []);
       const groupList = Array.isArray(groups) ? groups : [];
-      if (!groupList.find((gr) => gr.id === group)) {
-        groupList.push({ id: group, name: group, createdAt: ts });
+      if (!groupList.find((gr) => gr.id === groupId)) {
+        groupList.push({ id: groupId, name: groupId, createdAt: ts });
         let gsha = null;
         try {
           const gm = await g.getContents('data/groups.json');
           if (gm && gm.sha) gsha = gm.sha;
         } catch (_) {}
-        await writeJson(env, 'data/groups.json', groupList, `register group ${group}`, gsha);
+        await writeJson(env, 'data/groups.json', groupList, `register group ${groupId}`, gsha);
       }
     }
 

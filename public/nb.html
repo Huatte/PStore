@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>管理员 · PStore</title>
-  <link rel="stylesheet" href="/css/style.css?v=29" />
+  <link rel="stylesheet" href="/css/style.css?v=30" />
 </head>
 <body>
   <header class="site-header">
@@ -109,6 +109,24 @@
     </section>
   </main>
 
-  <script src="/js/admin.js?v=29"></script>
+  <!-- image picker modal for adding to groups -->
+  <div id="group-picker-modal" class="modal-overlay hidden">
+    <div class="modal modal-wide">
+      <div class="modal-head">
+        <h3>选择图片加入合集</h3>
+        <button id="group-picker-close" class="modal-close">×</button>
+      </div>
+      <div class="modal-body">
+        <input id="group-picker-search" type="text" placeholder="搜索图片名称…" autocomplete="off" />
+        <div id="group-picker-grid" class="gallery small"></div>
+        <div class="group-picker-footer">
+          <span id="group-picker-count">已选 0 张</span>
+          <button id="group-picker-confirm" class="btn-bulk-ok">确认添加</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/admin.js?v=30"></script>
 </body>
 </html>

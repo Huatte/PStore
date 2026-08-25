@@ -70,6 +70,23 @@ export async function onRequestGet(context) {
 
   working.sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
 
+  // Filters used by the group image picker:
+  //  - ungrouped=1 : only images not in any group
+  //  - from / to   : addedAt timestamp range (ms)
+  const ungrouped = (url.searchParams.get('ungrouped') || '') === '1';
+  const fromTs = parseInt(url.searchParams.get('from') || '', 10);
+  const toTs = parseInt(url.searchParams.get('to') || '', 10);
+
+  if (ungrouped) {
+    working = working.filter((img) => imgGroups(img).length === 0);
+  }
+  if (!isNaN(fromTs)) {
+    working = working.filter((img) => (img.addedAt || 0) >= fromTs);
+  }
+  if (!isNaN(toTs)) {
+    working = working.filter((img) => (img.addedAt || 0) <= toTs);
+  }
+
   if (q) {
     const filtered = working.filter((img) => {
       const haystack = `${img.name || ''} ${img.groupName || ''}`.toLowerCase();

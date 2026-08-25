@@ -127,7 +127,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- upload ---
   let uploading = false;
   let adminFailed = []; // { file, extra }
-  const t = token();
 
   function updateAdminRetryBtn() {
     const btn = document.getElementById('admin-retry-failed');
@@ -143,7 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function runAdminUploads(uploads) {
-    const MAX_CONCURRENT = 6;
+    const MAX_CONCURRENT = 3;
     let ok = 0, fail = 0;
     const newlyFailed = [];
 
@@ -160,7 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const { ui } = items[idx];
         ui.status.textContent = '上传中';
         try {
-          await uploadFileXhr(file, '/api/upload', { 'x-admin-token': t }, extra, ui);
+          await uploadFileXhr(file, '/api/upload', { 'x-admin-token': token() }, extra, ui);
           ui.fill.style.width = '100%';
           ui.pctEl.textContent = '100%';
           ui.speedEl.textContent = '完成';

@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
       thumb.className = 'thumb';
       thumb.loading = 'lazy';
       thumb.decoding = 'async';
-      thumb.src = `/thumb/${encodeURIComponent(img.key)}`;
+      thumb.src = `/img/${encodeURIComponent(img.key)}`;
       thumb.onerror = () => { thumb.style.visibility = 'hidden'; };
       thumb.alt = img.name || img.key;
       const name = document.createElement('div');

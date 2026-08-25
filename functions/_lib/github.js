@@ -26,7 +26,18 @@ export const gh = (env) => {
     return await r.json();
   }
 
-  return { getContents, putFile, REPO, BRANCH };
+  async function deleteFile(path, commitMsg, sha) {
+    const body = { message: commitMsg, branch: BRANCH };
+    if (sha) body.sha = sha;
+    const url = `https://api.github.com/repos/${REPO}/contents/${path}`;
+    const r = await fetch(url, { method: 'DELETE', headers, body: JSON.stringify(body) });
+    if (r.status !== 200) {
+      throw new Error(`GitHub delete failed: ${r.status} ${await r.text()}`);
+    }
+    return await r.json();
+  }
+
+  return { getContents, putFile, deleteFile, REPO, BRANCH };
 };
 
 // Helper: read a file's content as UTF-8 string, handling size >1MB via raw
@@ -54,6 +65,16 @@ export async function readJson(env, path, fallback) {
   } catch (e) {
     return fallback;
   }
+}
+
+// Download a file's bytes from the raw githubusercontent URL and return base64
+export async function rawFileBase64(env, path) {
+  const g = gh(env);
+  const url = `https://raw.githubusercontent.com/${g.REPO}/${g.BRANCH}/${path}`;
+  const r = await fetch(url);
+  if (!r.ok) return null;
+  const buf = await r.arrayBuffer();
+  return bytesToBase64(new Uint8Array(buf));
 }
 
 export async function writeJson(env, path, data, commitMsg, currentSha) {

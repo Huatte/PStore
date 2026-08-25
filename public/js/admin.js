@@ -184,11 +184,14 @@ document.addEventListener('DOMContentLoaded', () => {
       const div = document.createElement('div');
       div.className = 'review-item';
       div.innerHTML = `
-        <img class="review-thumb" src="/img/${encodeURIComponent(p.key)}?w=300" alt="" onerror="this.style.visibility='hidden'" />
+        <a class="review-thumb-link" href="/img/${encodeURIComponent(p.key)}" target="_blank" rel="noopener">
+          <img class="review-thumb" src="/img/${encodeURIComponent(p.key)}?w=300" alt="" onerror="this.style.visibility='hidden'" />
+        </a>
         <div class="review-info">
           <div class="c-head"><span class="c-author">${escapeHtml(p.uploader || '用户')}</span><span>${new Date(p.addedAt).toLocaleString()}</span></div>
           <div class="c-text">${escapeHtml(p.name)} · ${formatBytes(p.size)}</div>
           <div class="actions">
+            <a class="btn-view" href="/img/${encodeURIComponent(p.key)}" target="_blank" rel="noopener">查看大图</a>
             <button class="btn-approve" data-a="approve" data-key="${escapeHtml(p.key)}">通过</button>
             <button class="btn-reject" data-a="reject" data-key="${escapeHtml(p.key)}">拒绝</button>
           </div>

@@ -59,14 +59,9 @@ export async function onRequestPost(context) {
         else imageList.push(record);
         okCount++;
       } else {
-        // reject: remove the pending file from the repo (1 API call)
-        const pendingPath = `pending_images/${key}`;
-        const pendingMeta = await g.getContents(pendingPath).catch(() => null);
-        if (pendingMeta && pendingMeta.sha) {
-          try {
-            await g.deleteFile(pendingPath, `reject image ${key}`, pendingMeta.sha);
-          } catch (_) {}
-        }
+        // reject: index-only, same fast path as approve.
+        // The pending file is left in pending_images/ and cleaned up lazily
+        // (deleted via the admin delete-image endpoint or later).
         okCount++;
       }
       removedKeys.add(key);

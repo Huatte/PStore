@@ -78,6 +78,7 @@ async function handle(context) {
     name: file.name || key,
     size: file.size,
     type: file.type,
+    uploader: 'admin',
     addedAt: ts,
   };
   const idx = images.findIndex((i) => i.key === key);

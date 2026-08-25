@@ -62,30 +62,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const files = Array.from(fileInput.files || []);
     if (files.length === 0) { uploadProgress.textContent = '请选择图片'; uploadProgress.className = 'msg err'; return; }
 
+    const mode = document.querySelector('input[name="admin-upload-mode"]:checked').value;
+    const group = mode === 'merge' ? `g${Date.now()}${Math.random().toString(36).slice(2, 8)}` : '';
+
     uploading = true;
     uploadBtn.disabled = true;
     const originalText = uploadBtn.textContent;
     uploadBtn.textContent = '上传中…';
     uploadResults.innerHTML = '';
     const t = token();
-    for (const file of files) {
+    let ok = 0, fail = 0;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
       const fd = new FormData();
       fd.append('file', file);
-      uploadProgress.textContent = `正在上传：${file.name}`;
+      if (group) fd.append('group', group);
+      uploadProgress.textContent = `正在上传 ${i + 1}/${files.length}：${file.name}`;
       uploadProgress.className = 'msg';
       try {
         const res = await fetch('/api/upload', { method: 'POST', headers: { 'x-admin-token': t }, body: fd });
         const data = await res.json();
         if (res.ok) {
+          ok++;
           const li = document.createElement('li');
           li.textContent = `${file.name} — 上传成功`;
           uploadResults.appendChild(li);
         } else {
+          fail++;
           const li = document.createElement('li');
           li.textContent = `${file.name} — 失败：${data.error || '未知错误'}`;
           uploadResults.appendChild(li);
         }
       } catch (e) {
+        fail++;
         const li = document.createElement('li');
         li.textContent = `${file.name} — 网络错误`;
         uploadResults.appendChild(li);
@@ -95,8 +104,8 @@ document.addEventListener('DOMContentLoaded', () => {
     fileInput.value = '';
     uploadBtn.disabled = false;
     uploadBtn.textContent = originalText;
-    uploadProgress.textContent = '上传完成';
-    uploadProgress.className = 'msg ok';
+    uploadProgress.textContent = `上传完成：成功 ${ok} 张${fail ? `，失败 ${fail} 张` : ''}`;
+    uploadProgress.className = fail > 0 ? 'msg err' : 'msg ok';
     uploading = false;
     await loadManage();
     reloadGalleryCache();
@@ -242,20 +251,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const keys = reviewSelectedKeys();
     if (keys.length === 0) { alert('请先勾选要操作的图片'); return; }
     if (!confirm(`确定要批量${action === 'approve' ? '通过' : '拒绝'}选中的 ${keys.length} 张图片吗？`)) return;
-    let ok = 0, fail = 0;
-    for (const key of keys) {
-      try {
-        const res = await fetch('/api/admin/approve', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-admin-token': token() },
-          body: JSON.stringify({ action, key }),
-        });
-        if (res.ok) ok++; else fail++;
-      } catch (e) { fail++; }
+    const btn = action === 'approve' ? reviewBulkApprove : reviewBulkReject;
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '处理中…';
+    try {
+      const res = await fetch('/api/admin/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-token': token() },
+        body: JSON.stringify({ action, keys }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        const ok = data.okCount || keys.length;
+        const fail = data.failCount || 0;
+        alert(`批量操作完成：成功 ${ok} 张${fail ? `，失败 ${fail} 张` : ''}`);
+      } else {
+        alert('操作失败：' + (data.error || '未知错误'));
+      }
+    } catch (e) {
+      alert('网络错误');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
+      reviewSelectAll.checked = false;
+      await Promise.all([loadImageReview(), loadManage()]);
     }
-    alert(`批量操作完成：成功 ${ok} 张，失败 ${fail} 张`);
-    await loadImageReview();
-    await loadManage();
   }
   reviewBulkApprove.addEventListener('click', () => bulkReview('approve'));
   reviewBulkReject.addEventListener('click', () => bulkReview('reject'));

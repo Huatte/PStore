@@ -39,7 +39,9 @@ async function handle(context) {
   if (!file || typeof file === 'string') {
     return json({ error: 'no file' }, 400);
   }
-  const group = String(form.get('group') || '').trim().slice(0, 40) || undefined;
+  // groupName: named merged album (create/reuse). group: legacy pre-assigned id.
+  const groupName = String(form.get('groupName') || '').trim().slice(0, 60) || undefined;
+  const group = groupName ? undefined : (String(form.get('group') || '').trim().slice(0, 40) || undefined);
 
   if (file.size > MAX_BYTES) {
     return json({ error: 'file too large (max 40MB)' }, 413);
@@ -79,6 +81,28 @@ async function handle(context) {
     const indexSha = indexMeta ? indexMeta.sha : null;
 
   const ts = Date.now();
+
+    // Resolve target group id: by name (create/reuse) or legacy id
+    let groupId = group;
+    if (groupName) {
+      const groups = await readJson(env, 'data/groups.json', []);
+      const groupList = Array.isArray(groups) ? groups : [];
+      const existing = groupList.find((gr) => gr.name === groupName);
+      if (existing) {
+        groupId = existing.id;
+      } else {
+        const gid = `g${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
+        groupList.push({ id: gid, name: groupName, createdAt: ts });
+        groupId = gid;
+        let gsha = null;
+        try {
+          const gm = await g.getContents('data/groups.json');
+          if (gm && gm.sha) gsha = gm.sha;
+        } catch (_) {}
+        await writeJson(env, 'data/groups.json', groupList, `create group ${groupName}`, gsha);
+      }
+    }
+
   const record = {
     key,
     url: `/img/${key}`,
@@ -88,24 +112,24 @@ async function handle(context) {
     uploader: 'admin',
     addedAt: ts,
   };
-  if (group) record.group = group;
+  if (groupId) record.group = groupId;
   const idx = images.findIndex((i) => i.key === key);
   if (idx >= 0) images[idx] = { ...images[idx], addedAt: ts };
   else images.push(record);
   images.sort((a, b) => b.addedAt - a.addedAt);
 
-    // If this image belongs to a group not registered yet, register it
-    if (group) {
+    // If using a legacy group id not registered yet, register it
+    if (groupId && !groupName) {
       const groups = await readJson(env, 'data/groups.json', []);
       const groupList = Array.isArray(groups) ? groups : [];
-      if (!groupList.find((gr) => gr.id === group)) {
-        groupList.push({ id: group, name: group, createdAt: ts });
+      if (!groupList.find((gr) => gr.id === groupId)) {
+        groupList.push({ id: groupId, name: groupId, createdAt: ts });
         let gsha = null;
         try {
           const gm = await g.getContents('data/groups.json');
           if (gm && gm.sha) gsha = gm.sha;
         } catch (_) {}
-        await writeJson(env, 'data/groups.json', groupList, `register group ${group}`, gsha);
+        await writeJson(env, 'data/groups.json', groupList, `register group ${groupId}`, gsha);
       }
     }
 

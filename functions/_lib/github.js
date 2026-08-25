@@ -1,5 +1,41 @@
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// ---- Simple best-effort mutex ----
+// Cloudflare Pages Functions share a per-isolate global across requests served
+// by the same isolate, but not reliably across isolates. A robust cross-request
+// lock needs Durable Objects. To keep things simple and reliable, we use an
+// in-process lock keyed by string. It prevents the common "same worker isolate"
+// concurrent read-modify-write race, and falls back to running immediately.
+const localLocks = new Map();
+
+async function acquireLocal(lockKey) {
+  if (localLocks.has(lockKey)) return false;
+  localLocks.set(lockKey, true);
+  return true;
+}
+function releaseLocal(lockKey) {
+  localLocks.delete(lockKey);
+}
+
+// Run fn under a best-effort lock. If it can't be acquired quickly, run anyway
+// (GitHub's sha-conflict retry in putFile still guards correctness).
+export async function withLock(lockKey, fn) {
+  const started = Date.now();
+  while (true) {
+    if (await acquireLocal(lockKey)) {
+      try {
+        return await fn();
+      } finally {
+        releaseLocal(lockKey);
+      }
+    }
+    if (Date.now() - started > 6000) {
+      return fn(); // give up waiting, run directly
+    }
+    await sleep(120);
+  }
+}
+
 export const gh = (env) => {
   const REPO = env.GH_REPO;
   const BRANCH = env.GH_BRANCH || 'main';

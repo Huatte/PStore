@@ -411,7 +411,9 @@ document.addEventListener('DOMContentLoaded', () => {
           <label class="item-check"><input type="checkbox" class="manage-check" value="${escapeHtml(img.key)}" /></label>
           <img class="thumb" src="/img/${encodeURIComponent(img.key)}" alt="" onerror="this.style.visibility='hidden'" />
         </div>
+        <div class="manage-name" title="${escapeHtml(img.name || img.key)}">${escapeHtml(img.name || img.key)}</div>
         <div class="row">
+          <button class="btn-rename-img" data-key="${escapeHtml(img.key)}">改名</button>
           <a href="/img/${encodeURIComponent(img.key)}" target="_blank" download="${escapeHtml(img.name || img.key)}">下载</a>
           <button class="btn-delete-img" data-key="${escapeHtml(img.key)}">删除</button>
         </div>`;
@@ -490,6 +492,35 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   manageList.addEventListener('click', async (e) => {
+    const renameBtn = e.target.closest('.btn-rename-img');
+    if (renameBtn) {
+      const key = renameBtn.dataset.key;
+      const img = manageImages.find((i) => i.key === key);
+      const currentName = (img && img.name) || key;
+      const newName = prompt('输入新的图片名称：', currentName);
+      if (newName === null) return;
+      const trimmed = newName.trim();
+      if (!trimmed) { alert('名称不能为空'); return; }
+      renameBtn.disabled = true;
+      try {
+        const res = await fetch('/api/admin/rename-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-admin-token': token() },
+          body: JSON.stringify({ key, name: trimmed }),
+        });
+        if (res.ok) {
+          await loadManage();
+        } else {
+          renameBtn.disabled = false;
+          alert('改名失败');
+        }
+      } catch (err) {
+        renameBtn.disabled = false;
+        alert('网络错误');
+      }
+      return;
+    }
+
     const btn = e.target.closest('.btn-delete-img');
     if (!btn) return;
     const key = btn.dataset.key;

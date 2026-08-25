@@ -33,9 +33,19 @@ body {
 .upload-link {
   background: rgba(255,255,255,0.18); color: #fff; border: none;
   padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: 600;
+  text-decoration: none; display: inline-block;
 }
 .upload-link:hover { background: rgba(255,255,255,0.32); }
 .header-actions .admin-link { margin-left: 0; }
+
+/* Upload page (standalone) */
+.upload-page-card h2 { margin-bottom: 14px; }
+.upload-page-form { display: flex; flex-direction: column; gap: 12px; max-width: 560px; }
+.upload-page-form input[type="text"], .upload-page-form input[type="file"] {
+  background: var(--card2); border: 1px solid #333a5c; color: var(--text);
+  border-radius: 8px; padding: 10px 12px; font-size: 14px; font-family: inherit; width: 100%;
+}
+.upload-page-actions { display: flex; align-items: center; gap: 10px; }
 
 /* User upload modal */
 .modal-overlay {

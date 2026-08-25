@@ -77,37 +77,6 @@ export async function rawFileBase64(env, path) {
   return bytesToBase64(new Uint8Array(buf));
 }
 
-// Generate a clear thumbnail (webp, width 800, quality 85) and store it in thumbs/
-// Returns the thumb path (e.g. "thumbs/<key>.webp") or null on failure.
-export async function generateAndStoreThumb(env, key, sourcePath) {
-  const g = gh(env);
-  const upstream = `https://raw.githubusercontent.com/${g.REPO}/${g.BRANCH}/${sourcePath}`;
-  try {
-    const resized = await fetch(upstream, {
-      cf: {
-        image: {
-          fit: 'scale-down',
-          width: 800,
-          format: 'webp',
-          quality: 85,
-        },
-      },
-    });
-    if (!resized.ok || resized.status !== 200) return null;
-    const buf = new Uint8Array(await resized.arrayBuffer());
-    if (buf.length === 0) return null;
-    const thumbKey = `${key}.webp`;
-    const thumbPath = `thumbs/${thumbKey}`;
-    const existing = await g.getContents(thumbPath).catch(() => null);
-    if (!existing) {
-      await g.putFile(thumbPath, bytesToBase64(buf), `thumb ${key}`);
-    }
-    return thumbPath;
-  } catch (e) {
-    return null;
-  }
-}
-
 export async function writeJson(env, path, data, commitMsg, currentSha) {
   const g = gh(env);
   const json = JSON.stringify(data, null, 2);

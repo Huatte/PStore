@@ -273,6 +273,14 @@ button:hover { filter: brightness(1.08); }
   background: var(--card2); border: 1px solid #333a5c; color: var(--text);
   border-radius: 8px; padding: 10px 12px; font-size: 14px; width: 100%;
 }
+.picker-filters {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  margin-top: 10px;
+}
+.picker-filters select {
+  background: var(--card2); border: 1px solid #333a5c; color: var(--text);
+  border-radius: 8px; padding: 8px 10px; font-size: 13px; font-family: inherit;
+}
 #group-picker-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 10px; margin: 12px 0; max-height: 55vh; overflow-y: auto;

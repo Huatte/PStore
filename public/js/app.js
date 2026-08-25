@@ -5,7 +5,15 @@ document.addEventListener('DOMContentLoaded', () => {
   statusEl.className = 'empty';
   statusEl.textContent = '加载中…';
 
-  const PAGE = 10;
+  // Load 3 rows per request: compute how many columns fit, then × 3.
+  function pageSize() {
+    const minCard = 240;
+    const gap = 16;
+    const width = gallery.clientWidth || 800;
+    const cols = Math.max(1, Math.floor((width + gap) / (minCard + gap)));
+    return cols * 3;
+  }
+
   let q = '';
   let offset = 0;
   let total = Infinity;
@@ -68,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
       gallery.innerHTML = '';
     }
     try {
-      const params = new URLSearchParams({ limit: String(PAGE), offset: String(offset) });
+      const params = new URLSearchParams({ limit: String(pageSize()), offset: String(offset) });
       if (q) params.set('q', q);
       const res = await fetch(`/api/images?${params.toString()}`);
       const data = await res.json();
@@ -76,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
       total = typeof data.total === 'number' ? data.total : items.length;
       appendImages(items);
       offset += items.length;
-      if (offset >= total || items.length < PAGE) {
+      if (offset >= total || items.length < pageSize()) {
         done = true;
       }
       if (offset === 0 && items.length === 0) {

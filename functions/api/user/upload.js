@@ -4,6 +4,7 @@ import {
   writeJson,
   bytesToBase64,
   json,
+  withLock,
 } from '../../_lib/github.js';
 
 const MAX_BYTES = 40 * 1024 * 1024; // 40MB limit
@@ -66,30 +67,33 @@ async function handle(context) {
     return json({ error: 'upload failed' }, 500);
   }
 
-  // Record in pending_images.json
-  const pendings = await readJson(env, 'data/pending_images.json', []);
-  const ts = Date.now();
-  const record = {
-    key,
-    url: `/img/${key}`,
-    name: file.name || key,
-    size: file.size,
-    type: file.type,
-    uploader,
-    addedAt: ts,
-    status: 'pending',
-  };
-  if (group) record.group = group;
-  const idx = pendings.findIndex((p) => p.key === key);
-  if (idx >= 0) pendings[idx] = { ...pendings[idx], addedAt: ts, uploader };
-  else pendings.push(record);
+  // Record in pending_images.json (under lock to avoid clobbering concurrent uploads)
+  const record = await withLock('index:images', async () => {
+    const pendings = await readJson(env, 'data/pending_images.json', []);
+    const ts = Date.now();
+    const rec = {
+      key,
+      url: `/img/${key}`,
+      name: file.name || key,
+      size: file.size,
+      type: file.type,
+      uploader,
+      addedAt: ts,
+      status: 'pending',
+    };
+    if (group) rec.group = group;
+    const idx = pendings.findIndex((p) => p.key === key);
+    if (idx >= 0) pendings[idx] = { ...pendings[idx], addedAt: ts, uploader };
+    else pendings.push(rec);
 
-  let sha = null;
-  try {
-    const meta = await g.getContents('data/pending_images.json');
-    if (meta && meta.sha) sha = meta.sha;
-  } catch (_) {}
-  await writeJson(env, 'data/pending_images.json', pendings, `pending index update (${key})`, sha);
+    let sha = null;
+    try {
+      const meta = await g.getContents('data/pending_images.json');
+      if (meta && meta.sha) sha = meta.sha;
+    } catch (_) {}
+    await writeJson(env, 'data/pending_images.json', pendings, `pending index update (${key})`, sha);
+    return rec;
+  });
 
   return json({ ok: true, ...record });
 }

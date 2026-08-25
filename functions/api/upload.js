@@ -4,6 +4,7 @@ import {
   bytesToBase64,
   decodeBase64ToString,
   json,
+  withLock,
 } from '../_lib/github.js';
 
 const MAX_BYTES = 40 * 1024 * 1024; // 40MB limit
@@ -64,16 +65,17 @@ async function handle(context) {
     await g.putFile(imagePath, bytesToBase64(bytes), `upload image ${key}`);
   }
 
-  // Read current images.json index + sha in one call
-  const indexMeta = await g.getContents('data/images.json').catch(() => null);
-  let images = [];
-  if (indexMeta && indexMeta.content) {
-    try {
-      images = JSON.parse(decodeBase64ToString(indexMeta.content.replace(/\n/g, '')));
-      if (!Array.isArray(images)) images = [];
-    } catch (_) { images = []; }
-  }
-  const indexSha = indexMeta ? indexMeta.sha : null;
+  // Read + update images.json index under lock (avoid concurrent clobber)
+  return await withLock('index:images', async () => {
+    const indexMeta = await g.getContents('data/images.json').catch(() => null);
+    let images = [];
+    if (indexMeta && indexMeta.content) {
+      try {
+        images = JSON.parse(decodeBase64ToString(indexMeta.content.replace(/\n/g, '')));
+        if (!Array.isArray(images)) images = [];
+      } catch (_) { images = []; }
+    }
+    const indexSha = indexMeta ? indexMeta.sha : null;
 
   const ts = Date.now();
   const record = {
@@ -91,9 +93,10 @@ async function handle(context) {
   else images.push(record);
   images.sort((a, b) => b.addedAt - a.addedAt);
 
-  await writeJson(env, 'data/images.json', images, `update images index (${key})`, indexSha);
+    await writeJson(env, 'data/images.json', images, `update images index (${key})`, indexSha);
 
-  return json({ ok: true, ...record });
+    return json({ ok: true, ...record });
+  });
 }
 
 async function sha256(bytes) {

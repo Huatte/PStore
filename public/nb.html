@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>管理员 · PStore</title>
-  <link rel="stylesheet" href="/css/style.css?v=31" />
+  <link rel="stylesheet" href="/css/style.css?v=32" />
 </head>
 <body>
   <header class="site-header">
@@ -118,6 +118,15 @@
       </div>
       <div class="modal-body">
         <input id="group-picker-search" type="text" placeholder="搜索图片名称…" autocomplete="off" />
+        <div class="picker-filters">
+          <label class="bulk-check"><input type="checkbox" id="picker-ungrouped" /> 仅未加入合集的图片</label>
+          <select id="picker-time">
+            <option value="">全部时间</option>
+            <option value="today">今天</option>
+            <option value="7d">7天内</option>
+            <option value="30d">30天内</option>
+          </select>
+        </div>
         <div id="group-picker-grid" class="gallery small"></div>
         <div class="group-picker-footer">
           <span id="group-picker-count">已选 0 张</span>
@@ -127,6 +136,6 @@
     </div>
   </div>
 
-  <script src="/js/admin.js?v=31"></script>
+  <script src="/js/admin.js?v=32"></script>
 </body>
 </html>

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>管理员 · PStore</title>
-  <link rel="stylesheet" href="/css/style.css?v=10" />
+  <link rel="stylesheet" href="/css/style.css?v=11" />
 </head>
 <body>
   <header class="site-header">
@@ -37,7 +37,11 @@
       <div class="tab-panel" id="tab-upload">
         <div class="card">
           <h3>上传图片</h3>
-          <input id="file-input" type="file" accept="image/*" />
+          <input id="file-input" type="file" accept="image/*" multiple />
+          <div class="upload-mode">
+            <label><input type="radio" name="admin-upload-mode" value="separate" checked /> 每张单独详情页</label>
+            <label><input type="radio" name="admin-upload-mode" value="merge" /> 合并到同一详情页</label>
+          </div>
           <button id="upload-btn">上传</button>
           <div id="upload-progress" class="msg"></div>
           <ul id="upload-results"></ul>
@@ -83,6 +87,6 @@
     </section>
   </main>
 
-  <script src="/js/admin.js?v=10"></script>
+  <script src="/js/admin.js?v=11"></script>
 </body>
 </html>

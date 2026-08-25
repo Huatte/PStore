@@ -184,6 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const div = document.createElement('div');
       div.className = 'review-item';
       div.innerHTML = `
+        <label class="item-check"><input type="checkbox" class="review-check" value="${escapeHtml(p.key)}" /></label>
         <a class="review-thumb-link" href="/img/${encodeURIComponent(p.key)}" target="_blank" rel="noopener">
           <img class="review-thumb" src="/img/${encodeURIComponent(p.key)}?w=300" alt="" onerror="this.style.visibility='hidden'" />
         </a>
@@ -225,6 +226,40 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // --- bulk review ---
+  const reviewSelectAll = document.getElementById('review-select-all');
+  const reviewBulkApprove = document.getElementById('review-bulk-approve');
+  const reviewBulkReject = document.getElementById('review-bulk-reject');
+
+  function reviewSelectedKeys() {
+    return Array.from(imageReviewList.querySelectorAll('.review-check:checked')).map((c) => c.value);
+  }
+  reviewSelectAll.addEventListener('change', () => {
+    imageReviewList.querySelectorAll('.review-check').forEach((c) => { c.checked = reviewSelectAll.checked; });
+  });
+
+  async function bulkReview(action) {
+    const keys = reviewSelectedKeys();
+    if (keys.length === 0) { alert('请先勾选要操作的图片'); return; }
+    if (!confirm(`确定要批量${action === 'approve' ? '通过' : '拒绝'}选中的 ${keys.length} 张图片吗？`)) return;
+    let ok = 0, fail = 0;
+    for (const key of keys) {
+      try {
+        const res = await fetch('/api/admin/approve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-admin-token': token() },
+          body: JSON.stringify({ action, key }),
+        });
+        if (res.ok) ok++; else fail++;
+      } catch (e) { fail++; }
+    }
+    alert(`批量操作完成：成功 ${ok} 张，失败 ${fail} 张`);
+    await loadImageReview();
+    await loadManage();
+  }
+  reviewBulkApprove.addEventListener('click', () => bulkReview('approve'));
+  reviewBulkReject.addEventListener('click', () => bulkReview('reject'));
+
   // --- manage ---
   const manageSearch = document.getElementById('manage-search');
   let manageImages = [];
@@ -265,7 +300,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const div = document.createElement('div');
       div.className = 'manage-item';
       div.innerHTML = `
-        <img class="thumb" src="/img/${encodeURIComponent(img.key)}" alt="" onerror="this.style.visibility='hidden'" />
+        <div class="manage-item-top">
+          <label class="item-check"><input type="checkbox" class="manage-check" value="${escapeHtml(img.key)}" /></label>
+          <img class="thumb" src="/img/${encodeURIComponent(img.key)}" alt="" onerror="this.style.visibility='hidden'" />
+        </div>
         <div class="row">
           <a href="/img/${encodeURIComponent(img.key)}" target="_blank" download="${escapeHtml(img.name || img.key)}">下载</a>
           <button class="btn-delete-img" data-key="${escapeHtml(img.key)}">删除</button>
@@ -275,6 +313,36 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   manageSearch.addEventListener('input', renderManage);
+
+  const manageSelectAll = document.getElementById('manage-select-all');
+  const manageBulkDelete = document.getElementById('manage-bulk-delete');
+
+  function manageSelectedKeys() {
+    return Array.from(manageList.querySelectorAll('.manage-check:checked')).map((c) => c.value);
+  }
+  manageSelectAll.addEventListener('change', () => {
+    manageList.querySelectorAll('.manage-check').forEach((c) => { c.checked = manageSelectAll.checked; });
+  });
+
+  manageBulkDelete.addEventListener('click', async () => {
+    const keys = manageSelectedKeys();
+    if (keys.length === 0) { alert('请先勾选要删除的图片'); return; }
+    if (!confirm(`确定要批量删除选中的 ${keys.length} 张图片吗？此操作不可恢复。`)) return;
+    let ok = 0, fail = 0;
+    for (const key of keys) {
+      try {
+        const res = await fetch('/api/admin/delete-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-admin-token': token() },
+          body: JSON.stringify({ key }),
+        });
+        if (res.ok) ok++; else fail++;
+      } catch (e) { fail++; }
+    }
+    alert(`批量删除完成：成功 ${ok} 张，失败 ${fail} 张`);
+    manageSelectAll.checked = false;
+    await loadManage();
+  });
 
   manageList.addEventListener('click', async (e) => {
     const btn = e.target.closest('.btn-delete-img');

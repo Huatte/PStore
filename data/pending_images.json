@@ -1718,15 +1718,5 @@
     "uploader": "用户",
     "addedAt": 1787662884936,
     "status": "pending"
-  },
-  {
-    "key": "2924eef1b055355ff84bd364.png",
-    "url": "/img/2924eef1b055355ff84bd364.png",
-    "name": "locktest.png",
-    "size": 306,
-    "type": "image/png",
-    "uploader": "locktest",
-    "addedAt": 1787663419946,
-    "status": "pending"
   }
 ]

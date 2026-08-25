@@ -1,5 +1,30 @@
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// ---- Multi-group helpers ----
+// Image records may carry `groups` (array) in the new format, or the legacy
+// single `group` (string). These helpers normalize both so callers always see
+// an array and can update without worrying about the legacy field.
+
+export function imgGroups(img) {
+  if (img && Array.isArray(img.groups)) return img.groups;
+  if (img && img.group) return [img.group];
+  return [];
+}
+
+// Returns a shallow copy of img with the given groups array applied,
+// dropping the legacy `group` field.
+export function withGroups(img, groupsArr) {
+  const copy = { ...img };
+  delete copy.group;
+  copy.groups = groupsArr;
+  return copy;
+}
+
+// Returns true if the img belongs to the given group id.
+export function imgInGroup(img, gid) {
+  return imgGroups(img).includes(gid);
+}
+
 // ---- Simple best-effort mutex ----
 // Cloudflare Pages Functions share a per-isolate global across requests served
 // by the same isolate, but not reliably across isolates. A robust cross-request

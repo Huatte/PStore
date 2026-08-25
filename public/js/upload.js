@@ -117,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Upload all files in parallel (limited concurrency to avoid hammering the
   // GitHub API / Cloudflare). Each file gets its own progress bar.
   async function runUploads(uploads) {
-    const MAX_CONCURRENT = 6;
+    const MAX_CONCURRENT = 3;
     let ok = 0, fail = 0;
     const newlyFailed = [];
 

@@ -14,12 +14,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const moderateList = document.getElementById('moderate-list');
   const pendingCount = document.getElementById('pending-count');
   const manageList = document.getElementById('manage-list');
+  const imageReviewList = document.getElementById('image-review-list');
+  const imagePendingCount = document.getElementById('image-pending-count');
 
   // --- auth ---
   function token() { return localStorage.getItem('pstore_admin_token') || ''; }
   async function setToken(t) {
     localStorage.setItem('pstore_admin_token', t);
-    if (t) { showPanel(); await Promise.all([loadModerate(), loadManage()]); }
+    if (t) { showPanel(); await Promise.all([loadModerate(), loadImageReview(), loadManage()]); }
     else { loginView.classList.remove('hidden'); panelView.classList.add('hidden'); }
   }
 
@@ -148,6 +150,69 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) { btn.disabled = false; alert('网络错误'); }
   });
 
+  // --- image review (pending user uploads) ---
+  async function loadImageReview() {
+    const t = token();
+    try {
+      const res = await fetch('/api/admin/pending', { headers: { 'x-admin-token': t } });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      renderImageReview(data.pendings || []);
+    } catch (e) {
+      imageReviewList.innerHTML = '<div class="empty-list">加载失败</div>';
+    }
+  }
+
+  function renderImageReview(list) {
+    const pending = list.filter((p) => p.status === 'pending');
+    imagePendingCount.textContent = pending.length;
+    if (pending.length === 0) {
+      imageReviewList.innerHTML = '<div class="empty-list">暂无待审核图片</div>';
+      return;
+    }
+    imageReviewList.innerHTML = '';
+    pending.forEach((p) => {
+      const div = document.createElement('div');
+      div.className = 'review-item';
+      div.innerHTML = `
+        <img class="review-thumb" src="/img/${encodeURIComponent(p.key)}?w=300" alt="" onerror="this.style.visibility='hidden'" />
+        <div class="review-info">
+          <div class="c-head"><span class="c-author">${escapeHtml(p.uploader || '用户')}</span><span>${new Date(p.addedAt).toLocaleString()}</span></div>
+          <div class="c-text">${escapeHtml(p.name)} · ${formatBytes(p.size)}</div>
+          <div class="actions">
+            <button class="btn-approve" data-a="approve" data-key="${escapeHtml(p.key)}">通过</button>
+            <button class="btn-reject" data-a="reject" data-key="${escapeHtml(p.key)}">拒绝</button>
+          </div>
+        </div>`;
+      imageReviewList.appendChild(div);
+    });
+  }
+
+  imageReviewList.addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-a]');
+    if (!btn) return;
+    const action = btn.dataset.a;
+    const key = btn.dataset.key;
+    btn.disabled = true;
+    try {
+      const res = await fetch('/api/admin/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-token': token() },
+        body: JSON.stringify({ action, key }),
+      });
+      if (res.ok) {
+        await loadImageReview();
+        await loadManage();
+      } else {
+        btn.disabled = false;
+        alert('操作失败');
+      }
+    } catch (err) {
+      btn.disabled = false;
+      alert('网络错误');
+    }
+  });
+
   // --- manage ---
   async function loadManage() {
     try {
@@ -178,8 +243,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- init ---
   if (token()) showPanel();
-  if (token()) { loadModerate(); loadManage(); }
+  if (token()) { loadModerate(); loadImageReview(); loadManage(); }
 });
+
+function formatBytes(bytes) {
+  if (!bytes) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let i = 0, n = bytes;
+  while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
+  return `${n.toFixed(1)} ${units[i]}`;
+}
 
 function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

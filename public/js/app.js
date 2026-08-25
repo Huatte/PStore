@@ -1,30 +1,35 @@
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
   const gallery = document.getElementById('gallery');
   const searchBox = document.getElementById('search-box');
-  let images = [];
+  const statusEl = document.createElement('div');
+  statusEl.className = 'empty';
+  statusEl.textContent = '加载中…';
 
-  async function render() {
-    const q = (searchBox.value || '').trim().toLowerCase();
-    const list = images.filter((img) => {
-      if (!q) return true;
-      return (img.name || '').toLowerCase().includes(q);
-    });
+  const PAGE = 30;
+  let q = '';
+  let offset = 0;
+  let total = Infinity;
+  let loading = false;
+  let done = false;
 
-    if (list.length === 0) {
-      gallery.innerHTML = q
-        ? '<div class="empty">没有匹配的图片</div>'
-        : '<div class="empty">暂无图片</div>';
-      return;
+  function setStatus(text) {
+    if (text) {
+      statusEl.textContent = text;
+      if (!statusEl.parentNode) gallery.appendChild(statusEl);
+    } else if (statusEl.parentNode) {
+      statusEl.parentNode.removeChild(statusEl);
     }
+  }
 
-    gallery.innerHTML = '';
-    list.forEach((img) => {
+  function appendImages(images) {
+    images.forEach((img) => {
       const a = document.createElement('a');
       a.className = 'item';
       a.href = `/image.html?key=${encodeURIComponent(img.key)}`;
       const thumb = document.createElement('img');
       thumb.className = 'thumb';
       thumb.loading = 'lazy';
+      thumb.decoding = 'async';
       thumb.src = `/img/${encodeURIComponent(img.key)}?w=400`;
       thumb.onerror = () => { thumb.style.visibility = 'hidden'; };
       thumb.alt = img.name || img.key;
@@ -37,56 +42,72 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  searchBox.addEventListener('input', render);
-
-  // --- user upload modal ---
-  const modal = document.getElementById('upload-modal');
-  const openBtn = document.getElementById('upload-open');
-  const closeBtn = document.getElementById('upload-close');
-  const uploadFile = document.getElementById('upload-file');
-  const uploadNick = document.getElementById('upload-nickname');
-  const uploadSubmit = document.getElementById('upload-submit');
-  const uploadMsg = document.getElementById('upload-msg');
-
-  function showMsg(text, cls) {
-    uploadMsg.textContent = text;
-    uploadMsg.className = `msg ${cls}`;
-  }
-
-  openBtn.addEventListener('click', () => modal.classList.remove('hidden'));
-  closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
-  modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.add('hidden'); });
-
-  uploadSubmit.addEventListener('click', async () => {
-    const file = uploadFile.files && uploadFile.files[0];
-    if (!file) { showMsg('请先选择图片', 'err'); return; }
-    showMsg('上传中…', '');
-    uploadSubmit.disabled = true;
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('uploader', uploadNick.value || '');
+  async function loadMore() {
+    if (loading || done) return;
+    loading = true;
+    if (offset === 0) setStatus(q ? '搜索中…' : '加载中…');
     try {
-      const res = await fetch('/api/user/upload', { method: 'POST', body: fd });
+      const params = new URLSearchParams({ limit: String(PAGE), offset: String(offset) });
+      if (q) params.set('q', q);
+      const res = await fetch(`/api/images?${params.toString()}`);
       const data = await res.json();
-      if (res.ok) {
-        showMsg('上传成功，等待管理员审核。', 'ok');
-        uploadFile.value = '';
+      const items = data.images || [];
+      total = typeof data.total === 'number' ? data.total : items.length;
+      appendImages(items);
+      offset += items.length;
+      if (offset >= total || items.length < PAGE) {
+        done = true;
+      }
+      if (offset === 0 && items.length === 0) {
+        setStatus(q ? '没有匹配的图片' : '暂无图片');
+      } else if (!done) {
+        setStatus('加载中…');
       } else {
-        showMsg(data.error || '上传失败', 'err');
+        setStatus('');
       }
     } catch (e) {
-      showMsg('网络错误', 'err');
+      setStatus('加载失败，请刷新重试');
     } finally {
-      uploadSubmit.disabled = false;
+      loading = false;
     }
-  });
-
-  try {
-    const res = await fetch('/api/images');
-    const data = await res.json();
-    images = data.images || [];
-    await render();
-  } catch (e) {
-    gallery.innerHTML = '<div class="empty">加载失败，请稍后重试</div>';
   }
+
+  // debounced server-side search
+  let debounceTimer = null;
+  function onSearch() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      const newQ = (searchBox.value || '').trim().toLowerCase();
+      if (newQ === q) return;
+      q = newQ;
+      offset = 0;
+      done = false;
+      total = Infinity;
+      gallery.innerHTML = '';
+      loadMore();
+    }, 300);
+  }
+  searchBox.addEventListener('input', onSearch);
+
+  // infinite scroll: load more when near bottom
+  let ticking = false;
+  function onScroll() {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      ticking = false;
+      if (done || loading) return;
+      const body = document.body;
+      const html = document.documentElement;
+      const docHeight = Math.max(body.scrollHeight, body.offsetHeight, html.clientHeight, html.scrollHeight);
+      const scrollPos = window.scrollY + window.innerHeight;
+      if (docHeight - scrollPos < window.innerHeight * 1.2) {
+        loadMore();
+      }
+    });
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+
+  // initial load
+  loadMore();
 });

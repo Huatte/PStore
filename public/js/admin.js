@@ -316,12 +316,50 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const manageSelectAll = document.getElementById('manage-select-all');
   const manageBulkDelete = document.getElementById('manage-bulk-delete');
+  const manageBulkDownload = document.getElementById('manage-bulk-download');
 
   function manageSelectedKeys() {
     return Array.from(manageList.querySelectorAll('.manage-check:checked')).map((c) => c.value);
   }
   manageSelectAll.addEventListener('change', () => {
     manageList.querySelectorAll('.manage-check').forEach((c) => { c.checked = manageSelectAll.checked; });
+  });
+
+  function downloadBlob(url, filename) {
+    return fetch(url)
+      .then((r) => r.blob())
+      .then((blob) => {
+        const a = document.createElement('a');
+        const objectUrl = URL.createObjectURL(blob);
+        a.href = objectUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      });
+  }
+
+  manageBulkDownload.addEventListener('click', async () => {
+    const keys = manageSelectedKeys();
+    if (keys.length === 0) { alert('请先勾选要下载的图片'); return; }
+    const btn = manageBulkDownload;
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = '下载中…';
+    let ok = 0, fail = 0;
+    for (const key of keys) {
+      const img = manageImages.find((i) => i.key === key);
+      const filename = (img && img.name) || key;
+      try {
+        await downloadBlob(`/img/${encodeURIComponent(key)}`, filename);
+        ok++;
+      } catch (e) { fail++; }
+    }
+    btn.disabled = false;
+    btn.textContent = originalText;
+    if (fail > 0) alert(`批量下载完成：成功 ${ok} 张，失败 ${fail} 张`);
+    else alert(`已下载 ${ok} 张图片`);
   });
 
   manageBulkDelete.addEventListener('click', async () => {

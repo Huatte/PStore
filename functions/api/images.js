@@ -31,35 +31,35 @@ export async function onRequestGet(context) {
     return json({ images: list, total: list.length });
   }
 
-  // Browse/list mode: collapse each group into ONE representative card.
-  // Non-grouped images stay as-is. This keeps the list small even when a
-  // group has hundreds of members, so pagination is efficient.
-  const byGroup = new Map();
-  const standalone = [];
-  for (const img of images) {
-    if (img.group) {
-      const cur = byGroup.get(img.group);
-      // keep the newest member of the group as its representative
-      if (!cur || (img.addedAt || 0) > (cur.addedAt || 0)) byGroup.set(img.group, img);
-    } else {
-      standalone.push(img);
-    }
-  }
-  const deduped = [...byGroup.values(), ...standalone];
+  // Browse/list mode.
+  // Default (dedup=1): collapse each group into ONE representative card (homepage).
+  // dedup=0: return every image individually (admin manage page needs all).
+  const dedup = (url.searchParams.get('dedup') || '1') !== '0';
 
-  deduped.sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
+  let working = images;
+  if (dedup) {
+    const byGroup = new Map();
+    const standalone = [];
+    for (const img of images) {
+      if (img.group) {
+        const cur = byGroup.get(img.group);
+        if (!cur || (img.addedAt || 0) > (cur.addedAt || 0)) byGroup.set(img.group, img);
+      } else {
+        standalone.push(img);
+      }
+    }
+    working = [...byGroup.values(), ...standalone];
+  }
+
+  working.sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
 
   if (q) {
-    return json({
-      images: deduped.filter((img) => (img.name || '').toLowerCase().includes(q)),
-      total: deduped.filter((img) => (img.name || '').toLowerCase().includes(q)).length,
-      offset,
-      limit,
-    });
+    const filtered = working.filter((img) => (img.name || '').toLowerCase().includes(q));
+    return json({ images: filtered.slice(offset, offset + limit), total: filtered.length, offset, limit });
   }
 
-  const total = deduped.length;
-  const page = deduped.slice(offset, offset + limit);
+  const total = working.length;
+  const page = working.slice(offset, offset + limit);
 
   return json({ images: page, total, offset, limit });
 }

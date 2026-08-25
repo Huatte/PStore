@@ -1,5 +1,6 @@
 import {
   gh,
+  readJson,
   writeJson,
   bytesToBase64,
   decodeBase64ToString,
@@ -92,6 +93,21 @@ async function handle(context) {
   if (idx >= 0) images[idx] = { ...images[idx], addedAt: ts };
   else images.push(record);
   images.sort((a, b) => b.addedAt - a.addedAt);
+
+    // If this image belongs to a group not registered yet, register it
+    if (group) {
+      const groups = await readJson(env, 'data/groups.json', []);
+      const groupList = Array.isArray(groups) ? groups : [];
+      if (!groupList.find((gr) => gr.id === group)) {
+        groupList.push({ id: group, name: group, createdAt: ts });
+        let gsha = null;
+        try {
+          const gm = await g.getContents('data/groups.json');
+          if (gm && gm.sha) gsha = gm.sha;
+        } catch (_) {}
+        await writeJson(env, 'data/groups.json', groupList, `register group ${group}`, gsha);
+      }
+    }
 
     await writeJson(env, 'data/images.json', images, `update images index (${key})`, indexSha);
 

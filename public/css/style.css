@@ -48,6 +48,27 @@ body {
 }
 .upload-mode label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
 .upload-mode input { accent-color: var(--accent); cursor: pointer; }
+
+/* Upload progress list */
+.upload-list { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.upload-item {
+  background: var(--card2); border-radius: 8px; padding: 8px 12px;
+}
+.ui-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.ui-name { font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ui-status { font-size: 12px; color: var(--muted); flex-shrink: 0; }
+.ui-status.st-ok { color: var(--ok); }
+.ui-status.st-err { color: var(--danger); }
+.ui-bar {
+  height: 8px; background: #2a3050; border-radius: 4px; overflow: hidden;
+}
+.ui-fill {
+  height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2));
+  transition: width .2s ease; width: 0%;
+}
+.ui-meta { display: flex; justify-content: space-between; margin-top: 5px; font-size: 12px; color: var(--muted); }
+.ui-speed { color: var(--muted); }
+.ui-pct { color: var(--accent); }
 .modal {
   background: var(--card); border-radius: var(--radius); width: 100%; max-width: 420px;
   padding: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);

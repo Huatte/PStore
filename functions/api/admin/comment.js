@@ -27,13 +27,20 @@ export async function onRequestPost(context) {
   if (!target) return json({ error: 'comment not found' }, 404);
 
   if (action === 'delete') {
-    target.status = 'deleted';
+    // Permanently remove the comment from storage (no soft-delete residue)
+    const remaining = list.filter((c) => c.id !== id);
+    if (remaining.length === 0) {
+      delete comments[image];
+    } else {
+      comments[image] = remaining;
+    }
   } else if (action === 'hide') {
     target.status = 'hidden';
+    comments[image] = list;
   } else if (action === 'show') {
     target.status = 'visible';
+    comments[image] = list;
   }
-  comments[image] = list;
 
   let sha = null;
   try {

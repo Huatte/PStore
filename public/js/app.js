@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
   statusEl.className = 'empty';
   statusEl.textContent = '加载中…';
 
-  const PAGE = 30;
+  const PAGE = 10;
   let q = '';
   let offset = 0;
   let total = Infinity;

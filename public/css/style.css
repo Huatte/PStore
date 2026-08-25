@@ -161,5 +161,24 @@ button:hover { filter: brightness(1.08); }
 .btn-delete-img { background: var(--danger); color: #fff; border: none; border-radius: 6px; cursor: pointer; }
 .btn-delete-img:disabled { opacity: 0.6; cursor: not-allowed; }
 
+/* Bulk selection */
+.bulk-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 8px 0 12px; border-bottom: 1px solid #2a3050; margin-bottom: 12px;
+}
+.bulk-check { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--muted); cursor: pointer; }
+.bulk-check input, .item-check input { accent-color: var(--accent); cursor: pointer; }
+.btn-bulk-ok { background: var(--ok); color: #fff; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.btn-bulk-bad { background: var(--danger); color: #fff; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.item-check { display: flex; align-items: center; padding: 0 4px; }
+.manage-item-top { position: relative; }
+.manage-item-top .item-check {
+  position: absolute; top: 6px; left: 6px; z-index: 2;
+  background: rgba(0,0,0,0.5); border-radius: 4px; padding: 3px 5px;
+}
+.manage-item-top .thumb { width: 100%; aspect-ratio: 1/1; object-fit: cover; display: block; }
+.review-item { position: relative; }
+.review-item > .item-check { align-self: center; }
+
 /* Footer */
 .site-footer { margin-top: auto; padding: 18px 0; color: var(--muted); font-size: 13px; text-align: center; border-top: 1px solid #222; }

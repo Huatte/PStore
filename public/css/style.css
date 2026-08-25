@@ -215,6 +215,12 @@ button:hover { filter: brightness(1.08); }
   font-size: 12px; padding: 6px 10px; cursor: pointer;
 }
 .btn-rename-img:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-retry {
+  background: #f7b731; color: #000; border: none; padding: 8px 16px;
+  border-radius: 8px; font-size: 13px; cursor: pointer; font-weight: 600;
+  margin-left: 10px;
+}
+.btn-retry:hover { filter: brightness(1.08); }
 
 /* Pager */
 .pager { display: flex; align-items: center; gap: 12px; margin-top: 14px; justify-content: center; }

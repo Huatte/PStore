@@ -62,10 +62,6 @@ async function handle(context) {
   if (!existing) {
     await g.putFile(imagePath, bytesToBase64(bytes), `pending upload ${key}`);
   }
-  const verified = await g.getContents(imagePath).catch(() => null);
-  if (!verified) {
-    return json({ error: 'upload failed' }, 500);
-  }
 
   // Record in pending_images.json (under lock to avoid clobbering concurrent uploads)
   const record = await withLock('index:images', async () => {

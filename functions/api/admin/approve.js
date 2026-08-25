@@ -1,10 +1,4 @@
-import {
-  gh,
-  readJson,
-  writeJson,
-  rawFileBase64,
-  json,
-} from '../../_lib/github.js';
+import { gh, readJson, writeJson, json } from '../../_lib/github.js';
 
 export async function onRequestPost(context) {
   const { env, request } = context;
@@ -27,38 +21,28 @@ export async function onRequestPost(context) {
     return json({ error: 'invalid request' }, 400);
   }
 
-  const g = gh(env);
-  const pendings = await readJson(env, 'data/pending_images.json', []);
-  const pendingList = Array.isArray(pendings) ? pendings : [];
+  try {
+    const g = gh(env);
 
-  // Read images.json once up front (shared across all approved keys)
-  const images = await readJson(env, 'data/images.json', []);
-  const imageList = Array.isArray(images) ? images : [];
+    // ---- FAST PATH ----
+    // Image files already live in the repo (pending_images/<key>). /img/<key>
+    // reads from both pending_images/ and images/. Approving only updates the
+    // index (no file byte transfer) -> a single approve is a couple of JSON
+    // writes; a batch of N images is the same 2 writes regardless of N.
+    const pendings = await readJson(env, 'data/pending_images.json', []);
+    const pendingList = Array.isArray(pendings) ? pendings : [];
+    const images = await readJson(env, 'data/images.json', []);
+    const imageList = Array.isArray(images) ? images : [];
 
-  let okCount = 0;
-  let failCount = 0;
-  const removedPendingKeys = new Set();
+    let okCount = 0;
+    let failCount = 0;
+    const removedKeys = new Set();
 
-  for (const key of keys) {
-    const target = pendingList.find((p) => p.key === key);
-    if (!target) { failCount++; continue; }
+    for (const key of keys) {
+      const target = pendingList.find((p) => p.key === key);
+      if (!target) { failCount++; continue; }
 
-    const pendingPath = `pending_images/${key}`;
-    const pendingMeta = await g.getContents(pendingPath).catch(() => null);
-
-    try {
       if (action === 'approve') {
-        if (pendingMeta) {
-          const b64 = await rawFileBase64(env, pendingPath);
-          if (!b64) throw new Error('read pending failed');
-          const destPath = `images/${key}`;
-          const destExists = await g.getContents(destPath).catch(() => null);
-          if (!destExists) {
-            await g.putFile(destPath, b64, `approve image ${key}`);
-          }
-          await g.deleteFile(pendingPath, `remove pending ${key}`, pendingMeta.sha);
-        }
-        // index add (idempotent) — done in bulk after loop
         const record = {
           key,
           url: `/img/${key}`,
@@ -72,40 +56,46 @@ export async function onRequestPost(context) {
         const idx = imageList.findIndex((i) => i.key === key);
         if (idx >= 0) imageList[idx] = { ...imageList[idx], addedAt: record.addedAt };
         else imageList.push(record);
+        okCount++;
       } else {
-        // reject: remove the pending file if it still exists
-        if (pendingMeta) {
-          await g.deleteFile(pendingPath, `reject image ${key}`, pendingMeta.sha);
+        // reject: remove the pending file from the repo (1 API call)
+        const pendingPath = `pending_images/${key}`;
+        const pendingMeta = await g.getContents(pendingPath).catch(() => null);
+        if (pendingMeta && pendingMeta.sha) {
+          try {
+            await g.deleteFile(pendingPath, `reject image ${key}`, pendingMeta.sha);
+          } catch (_) {}
         }
+        okCount++;
       }
-      removedPendingKeys.add(key);
-      okCount++;
-    } catch (e) {
-      failCount++;
+      removedKeys.add(key);
     }
-  }
 
-  // Write images.json once if anything approved
-  if (action === 'approve' && okCount > 0) {
-    imageList.sort((a, b) => b.addedAt - a.addedAt);
-    let isha = null;
-    try {
-      const m = await g.getContents('data/images.json');
-      if (m && m.sha) isha = m.sha;
-    } catch (_) {}
-    await writeJson(env, 'data/images.json', imageList, `approve batch (${okCount})`, isha);
-  }
+    // Write images.json once if anything approved
+    if (action === 'approve' && okCount > 0) {
+      imageList.sort((a, b) => b.addedAt - a.addedAt);
+      let isha = null;
+      try {
+        const m = await g.getContents('data/images.json');
+        if (m && m.sha) isha = m.sha;
+      } catch (_) {}
+      await writeJson(env, 'data/images.json', imageList, `approve batch (${okCount})`, isha);
+    }
 
-  // Write pending_images.json once if anything removed
-  if (removedPendingKeys.size > 0) {
-    const remaining = pendingList.filter((p) => !removedPendingKeys.has(p.key));
-    let psha = null;
-    try {
-      const m = await g.getContents('data/pending_images.json');
-      if (m && m.sha) psha = m.sha;
-    } catch (_) {}
-    await writeJson(env, 'data/pending_images.json', remaining, `pending batch remove (${removedPendingKeys.size})`, psha);
-  }
+    // Write pending_images.json once (drop the processed keys)
+    if (removedKeys.size > 0) {
+      const remaining = pendingList.filter((p) => !removedKeys.has(p.key));
+      let psha = null;
+      try {
+        const m = await g.getContents('data/pending_images.json');
+        if (m && m.sha) psha = m.sha;
+      } catch (_) {}
+      await writeJson(env, 'data/pending_images.json', remaining, `pending batch remove (${removedKeys.size})`, psha);
+    }
 
-  return json({ ok: true, okCount, failCount });
+    return json({ ok: true, okCount, failCount });
+  } catch (e) {
+    console.error('APPROVE ERROR', e, String((e && e.stack) || ''));
+    return json({ error: String((e && e.message) || e) }, 500);
+  }
 }

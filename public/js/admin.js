@@ -226,6 +226,9 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // --- manage ---
+  const manageSearch = document.getElementById('manage-search');
+  let manageImages = [];
+
   async function loadManage() {
     try {
       const all = [];
@@ -239,21 +242,66 @@ document.addEventListener('DOMContentLoaded', () => {
         offset += items.length;
         if (!data.total || offset >= data.total || items.length === 0) break;
       }
-      const list = all;
-      if (list.length === 0) { manageList.innerHTML = '<div class="empty-list">暂无图片</div>'; return; }
-      manageList.innerHTML = '';
-      list.forEach((img) => {
-        const div = document.createElement('div');
-        div.className = 'manage-item';
-        div.innerHTML = `
-          <img class="thumb" src="/img/${encodeURIComponent(img.key)}" alt="" onerror="this.style.visibility='hidden'" />
-          <div class="row">
-            <a href="/img/${encodeURIComponent(img.key)}" target="_blank" download="${escapeHtml(img.name || img.key)}">下载</a>
-          </div>`;
-        manageList.appendChild(div);
-      });
+      manageImages = all;
+      renderManage();
     } catch (e) { manageList.innerHTML = '<div class="empty-list">加载失败</div>'; }
   }
+
+  function renderManage() {
+    const q = (manageSearch.value || '').trim().toLowerCase();
+    const list = manageImages.filter((img) => {
+      if (!q) return true;
+      return (img.name || '').toLowerCase().includes(q);
+    });
+
+    if (list.length === 0) {
+      manageList.innerHTML = q
+        ? '<div class="empty-list">没有匹配的图片</div>'
+        : '<div class="empty-list">暂无图片</div>';
+      return;
+    }
+    manageList.innerHTML = '';
+    list.forEach((img) => {
+      const div = document.createElement('div');
+      div.className = 'manage-item';
+      div.innerHTML = `
+        <img class="thumb" src="/img/${encodeURIComponent(img.key)}?w=300" alt="" onerror="this.style.visibility='hidden'" />
+        <div class="row">
+          <a href="/img/${encodeURIComponent(img.key)}" target="_blank" download="${escapeHtml(img.name || img.key)}">下载</a>
+          <button class="btn-delete-img" data-key="${escapeHtml(img.key)}">删除</button>
+        </div>`;
+      manageList.appendChild(div);
+    });
+  }
+
+  manageSearch.addEventListener('input', renderManage);
+
+  manageList.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.btn-delete-img');
+    if (!btn) return;
+    const key = btn.dataset.key;
+    if (!confirm(`确定删除图片 ${key} 吗？此操作不可恢复。`)) return;
+    btn.disabled = true;
+    btn.textContent = '删除中…';
+    try {
+      const res = await fetch('/api/admin/delete-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-token': token() },
+        body: JSON.stringify({ key }),
+      });
+      if (res.ok) {
+        await loadManage();
+      } else {
+        btn.disabled = false;
+        btn.textContent = '删除';
+        alert('删除失败');
+      }
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = '删除';
+      alert('网络错误');
+    }
+  });
 
   // gallery cache bust
   function reloadGalleryCache() {

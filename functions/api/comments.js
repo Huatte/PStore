@@ -1,12 +1,31 @@
 import { gh, readJson, writeJson, json } from '../_lib/github.js';
 
+function pad(n) { return String(n).padStart(2, '0'); }
+
+// Generate comment ID: 0d00 + YYYYMMDDHHmmss + 4 random letters
+// e.g. 0d00202608251933axkt
+export function makeCommentId(now = new Date()) {
+  const ts =
+    now.getFullYear() +
+    pad(now.getMonth() + 1) +
+    pad(now.getDate()) +
+    pad(now.getHours()) +
+    pad(now.getMinutes()) +
+    pad(now.getSeconds());
+  let suffix = '';
+  const letters = 'abcdefghijklmnopqrstuvwxyz';
+  for (let i = 0; i < 4; i++) suffix += letters[Math.floor(Math.random() * 26)];
+  return `0d00${ts}${suffix}`;
+}
+
 export async function onRequestGet(context) {
   const { env, request } = context;
   const url = new URL(request.url);
   const image = url.searchParams.get('image') || '';
 
   const comments = await readJson(env, 'data/comments.json', {});
-  const list = (comments[image] || []).filter((c) => c.status === 'approved');
+  // Only show visible comments to the public
+  const list = (comments[image] || []).filter((c) => c.status !== 'hidden' && c.status !== 'deleted');
   list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   return json({ comments: list });
 }
@@ -32,12 +51,13 @@ export async function onRequestPost(context) {
 
   const comments = await readJson(env, 'data/comments.json', {});
   const list = comments[image] || [];
+  const createdAt = Date.now();
   list.push({
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: makeCommentId(new Date(createdAt)),
     author,
     text,
-    status: 'pending',
-    createdAt: Date.now(),
+    status: 'visible', // comments show immediately by default
+    createdAt,
   });
   comments[image] = list;
 
@@ -47,6 +67,6 @@ export async function onRequestPost(context) {
     if (meta && meta.sha) sha = meta.sha;
   } catch (_) {}
 
-  await writeJson(env, 'data/comments.json', comments, `new comment submitted (pending)`, sha);
-  return json({ ok: true, message: 'submitted for review' });
+  await writeJson(env, 'data/comments.json', comments, `new comment ${createdAt}`, sha);
+  return json({ ok: true, message: 'posted' });
 }

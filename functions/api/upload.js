@@ -112,7 +112,7 @@ async function handle(context) {
     uploader: 'admin',
     addedAt: ts,
   };
-  if (groupId) record.group = groupId;
+  if (groupId) record.groups = [groupId];
   const idx = images.findIndex((i) => i.key === key);
   if (idx >= 0) images[idx] = { ...images[idx], addedAt: ts };
   else images.push(record);

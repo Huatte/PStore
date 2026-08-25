@@ -143,29 +143,45 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function runAdminUploads(uploads) {
+    const MAX_CONCURRENT = 6;
     let ok = 0, fail = 0;
     const newlyFailed = [];
-    for (let i = 0; i < uploads.length; i++) {
-      const { file, extra } = uploads[i];
-      const ui = createUploadItem(file);
-      uploadProgress.textContent = `正在上传 ${i + 1}/${uploads.length}`;
-      uploadProgress.className = 'msg';
-      try {
-        await uploadFileXhr(file, '/api/upload', { 'x-admin-token': t }, extra, ui);
-        ui.fill.style.width = '100%';
-        ui.pctEl.textContent = '100%';
-        ui.speedEl.textContent = '完成';
-        ui.status.textContent = '成功';
-        ui.status.classList.add('st-ok');
-        ok++;
-      } catch (err) {
-        fail++;
-        ui.status.textContent = '失败';
-        ui.status.classList.add('st-err');
-        ui.speedEl.textContent = err || '失败';
-        newlyFailed.push({ file, extra });
+
+    const items = uploads.map(({ file }) => ({ file, ui: createUploadItem(file) }));
+    uploadProgress.textContent = `开始上传 ${uploads.length} 个文件（并行）`;
+    uploadProgress.className = 'msg';
+
+    let cursor = 0;
+    async function worker() {
+      while (true) {
+        const idx = cursor++;
+        if (idx >= uploads.length) break;
+        const { file, extra } = uploads[idx];
+        const { ui } = items[idx];
+        ui.status.textContent = '上传中';
+        try {
+          await uploadFileXhr(file, '/api/upload', { 'x-admin-token': t }, extra, ui);
+          ui.fill.style.width = '100%';
+          ui.pctEl.textContent = '100%';
+          ui.speedEl.textContent = '完成';
+          ui.status.textContent = '成功';
+          ui.status.classList.add('st-ok');
+          ok++;
+        } catch (err) {
+          fail++;
+          ui.status.textContent = '失败';
+          ui.status.classList.add('st-err');
+          ui.speedEl.textContent = err || '失败';
+          newlyFailed.push({ file, extra });
+        }
       }
     }
+
+    const workerCount = Math.min(MAX_CONCURRENT, uploads.length);
+    const workers = [];
+    for (let i = 0; i < workerCount; i++) workers.push(worker());
+    await Promise.all(workers);
+
     adminFailed = newlyFailed;
     updateAdminRetryBtn();
     uploadProgress.textContent = `上传完成：成功 ${ok} 张${fail ? `，失败 ${fail} 张` : ''}`;

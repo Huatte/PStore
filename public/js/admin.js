@@ -216,9 +216,18 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- manage ---
   async function loadManage() {
     try {
-      const res = await fetch('/api/images');
-      const data = await res.json();
-      const list = data.images || [];
+      const all = [];
+      let offset = 0;
+      const PAGE = 100;
+      while (true) {
+        const res = await fetch(`/api/images?limit=${PAGE}&offset=${offset}`);
+        const data = await res.json();
+        const items = data.images || [];
+        all.push(...items);
+        offset += items.length;
+        if (!data.total || offset >= data.total || items.length === 0) break;
+      }
+      const list = all;
       if (list.length === 0) { manageList.innerHTML = '<div class="empty-list">暂无图片</div>'; return; }
       manageList.innerHTML = '';
       list.forEach((img) => {

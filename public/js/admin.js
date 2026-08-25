@@ -409,7 +409,7 @@ document.addEventListener('DOMContentLoaded', () => {
       let offset = 0;
       const PAGE = 100;
       while (true) {
-        const res = await fetch(`/api/images?limit=${PAGE}&offset=${offset}`);
+        const res = await fetch(`/api/images?dedup=0&limit=${PAGE}&offset=${offset}`);
         const data = await res.json();
         const items = data.images || [];
         all.push(...items);

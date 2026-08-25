@@ -542,18 +542,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const keys = manageSelectedKeys();
     if (keys.length === 0) { alert('请先勾选要删除的图片'); return; }
     if (!confirm(`确定要批量删除选中的 ${keys.length} 张图片吗？此操作不可恢复。`)) return;
-    let ok = 0, fail = 0;
-    for (const key of keys) {
-      try {
-        const res = await fetch('/api/admin/delete-image', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-admin-token': token() },
-          body: JSON.stringify({ key }),
-        });
-        if (res.ok) ok++; else fail++;
-      } catch (e) { fail++; }
-    }
-    alert(`批量删除完成：成功 ${ok} 张，失败 ${fail} 张`);
+    const btn = manageBulkDelete;
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = '删除中…';
+    try {
+      const res = await fetch('/api/admin/delete-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-token': token() },
+        body: JSON.stringify({ keys }),
+      });
+      const data = await res.json();
+      if (res.ok) alert(`批量删除完成：成功 ${data.count || keys.length} 张`);
+      else alert('删除失败');
+    } catch (e) { alert('网络错误'); }
+    btn.disabled = false;
+    btn.textContent = originalText;
     manageSelectAll.checked = false;
     await loadManage();
   });

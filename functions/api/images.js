@@ -24,6 +24,13 @@ export async function onRequestGet(context) {
     return json({ image: found || null });
   }
 
+  // Lookup all images in a group (used by detail page for grouped uploads)
+  const group = url.searchParams.get('group');
+  if (group) {
+    const list = images.filter((i) => i.group === group).sort((a, b) => b.addedAt - a.addedAt);
+    return json({ images: list, total: list.length });
+  }
+
   images.sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
 
   if (q) {

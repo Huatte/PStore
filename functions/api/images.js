@@ -31,14 +31,35 @@ export async function onRequestGet(context) {
     return json({ images: list, total: list.length });
   }
 
-  images.sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
+  // Browse/list mode: collapse each group into ONE representative card.
+  // Non-grouped images stay as-is. This keeps the list small even when a
+  // group has hundreds of members, so pagination is efficient.
+  const byGroup = new Map();
+  const standalone = [];
+  for (const img of images) {
+    if (img.group) {
+      const cur = byGroup.get(img.group);
+      // keep the newest member of the group as its representative
+      if (!cur || (img.addedAt || 0) > (cur.addedAt || 0)) byGroup.set(img.group, img);
+    } else {
+      standalone.push(img);
+    }
+  }
+  const deduped = [...byGroup.values(), ...standalone];
+
+  deduped.sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
 
   if (q) {
-    images = images.filter((img) => (img.name || '').toLowerCase().includes(q));
+    return json({
+      images: deduped.filter((img) => (img.name || '').toLowerCase().includes(q)),
+      total: deduped.filter((img) => (img.name || '').toLowerCase().includes(q)).length,
+      offset,
+      limit,
+    });
   }
 
-  const total = images.length;
-  const page = images.slice(offset, offset + limit);
+  const total = deduped.length;
+  const page = deduped.slice(offset, offset + limit);
 
   return json({ images: page, total, offset, limit });
 }

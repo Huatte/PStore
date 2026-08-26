@@ -7,7 +7,9 @@
   },
   "fixedPasswordHash": "a9f1ef021adc616ed9d091dfcfbfd4cd762dd86b84b42a675c3e24a7e73dc4c0",
   "mutablePasswordHash": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
-  "pinned": [],
+  "pinned": [
+    "2ec1d9d365ba966c7578ed08.png"
+  ],
   "hidden": [],
   "hiddenGroups": []
 }

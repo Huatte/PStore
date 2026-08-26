@@ -1,5 +1,5 @@
 {
-  "searchOnly": false,
+  "searchOnly": true,
   "background": {
     "enabled": true,
     "imageId": "07212026082610159227",

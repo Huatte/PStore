@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "key": "c414cd0e204de974f73753c7.png",
+    "url": "/img/c414cd0e204de974f73753c7.png",
+    "name": "reject-test.png",
+    "size": 70,
+    "type": "image/png",
+    "uploader": "rejecttest",
+    "addedAt": 1787720134174,
+    "id": "07212026082604555511",
+    "sha": "c414cd0e204de974f73753c7e28d7638e7b3691bb8b1a2bab6b25bb7fed7ce77",
+    "status": "pending"
+  }
+]

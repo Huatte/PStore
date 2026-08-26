@@ -21,13 +21,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   } catch (e) {}
 
   // Determine the set of images to show (single or whole group)
+  const imgGroups = (img) => (img && Array.isArray(img.groups) ? img.groups : (img && img.group ? [img.group] : []));
   let images = [];
-  if (imageInfo && imageInfo.group) {
+  const groups = imgGroups(imageInfo);
+  if (groups.length > 0) {
     try {
-      const res = await fetch(`/api/images?group=${encodeURIComponent(imageInfo.group)}`);
+      const res = await fetch(`/api/images?group=${encodeURIComponent(groups[0])}`);
       const data = await res.json();
       images = (data.images || []).sort((a, b) => b.addedAt - a.addedAt);
-    } catch (e) { images = [imageInfo]; }
+    } catch (e) { images = imageInfo ? [imageInfo] : []; }
   } else {
     images = imageInfo ? [imageInfo] : [];
   }

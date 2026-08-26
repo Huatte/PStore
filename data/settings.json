@@ -1,5 +1,5 @@
 {
-  "searchOnly": true,
+  "searchOnly": false,
   "background": {
     "enabled": false,
     "imageId": null,

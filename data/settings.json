@@ -2,8 +2,8 @@
   "searchOnly": false,
   "background": {
     "enabled": true,
-    "imageId": "4780d973063639ef90cafa99.gif",
-    "opacity": 0.2
+    "imageId": "07212026082610159227",
+    "opacity": 0.25
   },
   "fixedPasswordHash": "a9f1ef021adc616ed9d091dfcfbfd4cd762dd86b84b42a675c3e24a7e73dc4c0",
   "mutablePasswordHash": "1660382def1e8814b7d54af9a621432e74baafa07427070adf615559e05241a0",
